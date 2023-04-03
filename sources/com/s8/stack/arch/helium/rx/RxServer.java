@@ -9,7 +9,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.s8.stack.arch.silicon.SiliconEngine;
+import com.s8.arch.silicon.SiliconEngine;
 
 
 /**

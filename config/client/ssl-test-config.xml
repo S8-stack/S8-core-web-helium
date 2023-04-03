@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root:SSL_EndpointConfig>
+	<server-side>false</server-side>
+	<name>myClient</name>
+	<timeout>200</timeout>
+	<SSL-verbose>true</SSL-verbose>
+</root:SSL_EndpointConfig>

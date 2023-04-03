@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+ xmlns:xs="http://www.w3.org/2001/XMLSchema"
+ targetNamespace="http://s8.com"
+ xmlns:tns="http://s8.com"
+ elementFormDefault="qualified">
+	<xs:element name="SSL_WebConfiguration" type="tns:com.s8.io.web.ssl.SSL_WebConfiguration"/>
+
+	<xs:complexType name="com.s8.io.web.ssl.SSL_WebConfiguration">
+		<xs:sequence>
+		<xs:choice maxOccurs="unbounded" minOccurs="1">
+			<xs:element name="isServer" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="SSL-keystore_pathname" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="SSL-keystore_password" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="SSL-encryption_protocol" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="SSL-application_protocols" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="timeout" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="n-processing-units" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="SSL-maxPacketSize" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="backlog" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="port" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="socket_RxSocketConfiguration" type="tns:com.s8.io.web.rx.RxSocketConfiguration" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="SSL-isVerbose" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="name" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="host" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="RxSocketConfiguration" type="tns:com.s8.io.web.rx.RxSocketConfiguration" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="isRxVerbose" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="socket" type="tns:com.s8.io.web.rx.RxSocketConfiguration" minOccurs="0" maxOccurs="unbounded" />
+		</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="com.s8.io.web.rx.RxSocketConfiguration">
+		<xs:sequence>
+		<xs:choice maxOccurs="unbounded" minOccurs="1">
+			<xs:element name="receive-buffer-size" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="keep-alive" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="traffic-class" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="send-buffer-size" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="OOBINLINE" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+			<xs:element name="TCP_NODELAY" type="xs:string" minOccurs="0" maxOccurs="unbounded" />
+		</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

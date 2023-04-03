@@ -6,7 +6,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.s8.stack.arch.silicon.watch.WatchTask;
+import com.s8.arch.silicon.watch.WatchTask;
 
 
 /**

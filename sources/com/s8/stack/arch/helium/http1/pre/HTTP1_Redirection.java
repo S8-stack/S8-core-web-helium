@@ -3,6 +3,7 @@ package com.s8.stack.arch.helium.http1.pre;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
+import com.s8.arch.silicon.SiliconEngine;
 import com.s8.stack.arch.helium.http1.HTTP1_Connection;
 import com.s8.stack.arch.helium.http1.HTTP1_Endpoint;
 import com.s8.stack.arch.helium.http1.HTTP1_Server;
@@ -13,7 +14,6 @@ import com.s8.stack.arch.helium.http1.headers.Location;
 import com.s8.stack.arch.helium.http1.headers.MIME_Type;
 import com.s8.stack.arch.helium.http1.messages.HTTP1_Request;
 import com.s8.stack.arch.helium.http1.messages.HTTP1_Response;
-import com.s8.stack.arch.silicon.SiliconEngine;
 
 
 /**

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BetaAppConfiguration xmlns="http://s8.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://s8.com schema.xsd">
+	<dispatch n-units="6">
+		<map profile="WEB_REQUEST_SELECTING">0</map>
+		<map profile="WEB_REQUEST_PROCESSING">0, 1, 2, 3, 4</map>
+		<map profile="IO_DATA_LAKE">5</map>
+		<map profile="IO_SSD">5</map>
+		<map profile="IO_LOCAL_DISK">5</map>
+		<map profile="S8SHELL_SCAN">5</map>
+		<map profile="FX0">5</map>
+		<map profile="FX1">5</map>
+		<map profile="FX2">5</map>
+		<map profile="FX3">5</map>
+		<map profile="FX4">5</map>
+		<map profile="FX5">5</map>
+		<map profile="FX6">5</map>
+		<map profile="FX7">5</map>
+	</dispatch>
+</BetaAppConfiguration>

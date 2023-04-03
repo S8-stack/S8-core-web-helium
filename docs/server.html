@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SSL-setup</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<h1>Request format</h1>
+	<p>Request format is given below:
+	<p>
+	<ul>
+		<li><b>First 2 bytes</b>: (0-2) Indicate the type of request identification (also, act as an error checking mechanism).</li>
+		<li><b>Next 8 bytes</b>: (2-10) Give the <q>BkFile</q> address</li>
+		<li><b>Next 4 bytes</b>: (10-14) Give the <q>BkObject</q> address within the file</li>
+		<li><b>Next byte</b>: Give the code of the method to be called on the server side object</li>
+		<li><b>Next bytes</b>: parameters<li>
+	</ul>
+	<code>#0000000000001234:000002af.read(a=123, b="sdjoisdjq",
+		c:)?0x08efwrqi</code>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SSL_WebConfiguration xmlns="http://s8.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://s8.com schema.xsd">
+	<name>client</name>
+	<isServer>false</isServer>
+	<port>1336</port>
+	<host>localhost</host>
+	<SSL-isVerbose>true</SSL-isVerbose>
+	<SSL-encryption_protocol>TLSv1.3</SSL-encryption_protocol>
+	<SSL-keystore_pathname>config/s2/keystore.jks</SSL-keystore_pathname>
+	<SSL-keystore_password>rDfe4_!xef</SSL-keystore_password>
+</SSL_WebConfiguration>
