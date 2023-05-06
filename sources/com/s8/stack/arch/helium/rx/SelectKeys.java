@@ -71,7 +71,7 @@ public class SelectKeys implements WatchTask {
 					 *  (the connection has already been created)
 					 */
 					else { 
-						server.getEngine().pushT1Task(new ProcessKey(key));
+						server.getEngine().pushAsyncTask(new ProcessKey(key));
 					}
 				}
 
