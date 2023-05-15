@@ -75,7 +75,7 @@ public class SSL_Module {
 	{
 		char[] password = configuration.getKeystorePassword();
 
-		KeyStore keyStore = KeyStore.getInstance("JKS");
+		KeyStore keyStore = KeyStore.getInstance("PKCS12");
 		try(InputStream is = new BufferedInputStream(new FileInputStream(configuration.getKeystoreFile()))){
 			keyStore.load(is, password);
 			is.close();
