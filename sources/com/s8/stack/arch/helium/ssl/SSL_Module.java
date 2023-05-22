@@ -23,7 +23,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
-import com.s8.io.xml.handler.XML_Lexicon;
+import com.s8.io.xml.codebase.XML_Codebase;
 
 /**
  * Handle SSL stuff
@@ -107,7 +107,7 @@ public class SSL_Module {
 
 		// retrieve configuration
 		Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(new File(pathname))));
-		XML_Lexicon context = new XML_Lexicon(SSL_WebConfiguration.class);
+		XML_Codebase context = XML_Codebase.from(SSL_WebConfiguration.class);
 		SSL_WebConfiguration configuration = (SSL_WebConfiguration) context.deserialize(reader);
 		reader.close();
 

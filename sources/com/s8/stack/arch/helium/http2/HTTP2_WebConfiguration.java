@@ -5,7 +5,7 @@ import java.nio.file.Path;
 
 import com.s8.io.xml.annotations.XML_SetElement;
 import com.s8.io.xml.annotations.XML_Type;
-import com.s8.io.xml.handler.XML_Lexicon;
+import com.s8.io.xml.codebase.XML_Codebase;
 import com.s8.stack.arch.helium.ssl.SSL_WebConfiguration;
 
 @XML_Type(root = true, name="HTTP2_WebConfiguration", sub= {})
@@ -45,7 +45,7 @@ public class HTTP2_WebConfiguration extends SSL_WebConfiguration {
 	 * @throws Exception
 	 */
 	public static HTTP2_WebConfiguration load(Path root, String pathname) throws Exception {
-		XML_Lexicon context = new XML_Lexicon(HTTP2_WebConfiguration.class);
+		XML_Codebase context = XML_Codebase.from(HTTP2_WebConfiguration.class);
 		HTTP2_WebConfiguration configuration = 
 				(HTTP2_WebConfiguration) context.deserialize(root.resolve(pathname).toFile());
 		configuration.setRoot(root);
@@ -60,7 +60,7 @@ public class HTTP2_WebConfiguration extends SSL_WebConfiguration {
 	 * @throws Exception
 	 */
 	public static HTTP2_WebConfiguration load(String pathname) throws Exception {
-		XML_Lexicon context = new XML_Lexicon(HTTP2_WebConfiguration.class);
+		XML_Codebase context = XML_Codebase.from(HTTP2_WebConfiguration.class);
 		return (HTTP2_WebConfiguration) context.deserialize(new File(pathname));
 	}
 }

@@ -5,7 +5,7 @@ import java.nio.file.Path;
 
 import com.s8.io.xml.annotations.XML_SetElement;
 import com.s8.io.xml.annotations.XML_Type;
-import com.s8.io.xml.handler.XML_Lexicon;
+import com.s8.io.xml.codebase.XML_Codebase;
 import com.s8.stack.arch.helium.rx.RxWebConfiguration;
 
 @XML_Type(root = true, name="SSL_WebConfiguration", sub= {})
@@ -110,14 +110,14 @@ public class SSL_WebConfiguration extends RxWebConfiguration {
 	}
 	
 	public static SSL_WebConfiguration load(Path root, String pathname) throws Exception {
-		XML_Lexicon context = new XML_Lexicon(SSL_WebConfiguration.class);
+		XML_Codebase context = XML_Codebase.from(SSL_WebConfiguration.class);
 		SSL_WebConfiguration configuration = (SSL_WebConfiguration) context.deserialize(root.resolve(pathname).toFile());
 		configuration.setRoot(root);
 		return configuration;
 	}
 	
 	public static SSL_WebConfiguration load(String pathname) throws Exception {
-		XML_Lexicon context = new XML_Lexicon(SSL_WebConfiguration.class);
+		XML_Codebase context = XML_Codebase.from(SSL_WebConfiguration.class);
 		return (SSL_WebConfiguration) context.deserialize(new File(pathname));
 	}
 	
