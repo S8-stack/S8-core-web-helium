@@ -2,10 +2,10 @@ package com.s8.stack.arch.helium.rx;
 
 import java.nio.channels.SelectionKey;
 
-import com.s8.arch.silicon.async.AsyncTask;
+import com.s8.arch.silicon.async.SiAsyncTask;
 import com.s8.arch.silicon.async.MthProfile;
 
-public class ProcessKey implements AsyncTask {
+public class ProcessKey implements SiAsyncTask {
 
 	private SelectionKey key;
 
