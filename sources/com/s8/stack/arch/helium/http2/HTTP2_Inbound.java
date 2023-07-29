@@ -62,7 +62,8 @@ public class HTTP2_Inbound extends SSL_Inbound {
 		try {
 			int count = 0;
 			int newPosition, lastPosition = 0;
-			while(state!=null && buffer.hasRemaining()) {
+			boolean isReceiving = true;
+			while(isReceiving && state!=null && buffer.hasRemaining()) {
 				
 				lastPosition = buffer.position();
 				
@@ -77,7 +78,14 @@ public class HTTP2_Inbound extends SSL_Inbound {
 				if(newPosition == lastPosition) {
 					count++;
 					if(count > MAX_NB_FAILED_BUFFER_READING_ATTEMPTS) {
+						isReceiving = false;
 						connection.close();
+						
+						//boolean isVerbose = connection.getInbound().HTTP2_isVerbose;
+						//if(isVerbose) {
+							System.err.println("[HTTP2_Inbound] Force closing of connection: "
+									+ "continuously failed to read data");
+						//}
 					}
 				}
 			}
