@@ -54,14 +54,31 @@ public class HTTP2_Inbound extends SSL_Inbound {
 	public void setState(HTTP2_IOReactive state) {
 		this.state = state;
 	}
+	
+	public final static int MAX_NB_FAILED_BUFFER_READING_ATTEMPTS = 1024;
 
 	@Override
 	public void SSL_onReceived(ByteBuffer buffer) {
 		try {
+			int count = 0;
+			int newPosition, lastPosition = 0;
 			while(state!=null && buffer.hasRemaining()) {
+				
+				lastPosition = buffer.position();
+				
+				/* read from buffer */
 				HTTP2_Error error = state.on(buffer);
 				if(error!=HTTP2_Error.NO_ERROR) {
 					connection.close();
+				}
+				
+				/* check that Inbound is ACTUALLY reading buffer, if not increment counter */
+				newPosition = buffer.position();
+				if(newPosition == lastPosition) {
+					count++;
+					if(count > MAX_NB_FAILED_BUFFER_READING_ATTEMPTS) {
+						connection.close();
+					}
 				}
 			}
 		}

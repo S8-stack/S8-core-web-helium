@@ -6,7 +6,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.s8.arch.silicon.watch.WatchTask;
+import com.s8.arch.silicon.watch.WatchSiTask;
 
 
 /**
@@ -14,7 +14,7 @@ import com.s8.arch.silicon.watch.WatchTask;
  * @author pierreconvert
  *
  */
-public class SelectKeys implements WatchTask {
+public class SelectKeys implements WatchSiTask {
 
 
 	/**
@@ -31,7 +31,7 @@ public class SelectKeys implements WatchTask {
 	}
 	
 	@Override
-	public WatchTask run() {
+	public WatchSiTask run() {
 
 		try {
 
@@ -85,8 +85,12 @@ public class SelectKeys implements WatchTask {
 					 *  (the connection has already been created)
 					 */
 					else { 
-						server.getEngine().pushAsyncTask(new ProcessKey(key));
-						
+						boolean isSuccessful = server.getEngine().pushAsyncTask(new ProcessKey(key));
+						if(!isSuccessful) {
+							//if(server.isRxVerbose) {
+							System.err.println("Failed to add new task!");	
+							//}
+						}
 					}
 				}
 				keycount++;
