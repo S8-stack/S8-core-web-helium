@@ -17,7 +17,14 @@ import com.s8.arch.silicon.watch.WatchTask;
 public class SelectKeys implements WatchTask {
 
 
+	/**
+	 * We limits at 2^16 the number keys per select
+	 */
+	public final static int MAX_KEYCOUNT_PER_SELECT = 65536;
+	
+	
 	private final RxServer server;
+	
 	
 	public SelectKeys(RxServer server) {
 		this.server = server;
@@ -40,12 +47,19 @@ public class SelectKeys implements WatchTask {
 
 			Iterator<SelectionKey> iterator = selectedKeys.iterator();
 
-			while (iterator.hasNext()) {
+			/* keep track of number of inserted keys */
+			long keycount = 0;
+			boolean hasReachedThresholds = false;
+			while (!hasReachedThresholds && iterator.hasNext()) {
 
 				SelectionKey key = iterator.next();
 
 				// filter OP_ACCEPT
 				if(key.isValid()) {
+					
+					/**
+					 * new incoming connection request is yet to be accepted, then fully connected
+					 */
 					if (key.isAcceptable()) {
 
 						SocketChannel socketChannel;
@@ -72,9 +86,14 @@ public class SelectKeys implements WatchTask {
 					 */
 					else { 
 						server.getEngine().pushAsyncTask(new ProcessKey(key));
+						
 					}
 				}
-
+				keycount++;
+				
+				if(keycount > MAX_KEYCOUNT_PER_SELECT) {
+					hasReachedThresholds = true;
+				}
 
 				/* </connection-IO> */
 
