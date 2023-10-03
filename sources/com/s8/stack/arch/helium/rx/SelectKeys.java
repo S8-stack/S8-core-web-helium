@@ -6,7 +6,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
-import com.s8.arch.silicon.watch.WatchTask;
+import com.s8.arch.silicon.watch.WatchSiTask;
 
 
 /**
@@ -14,7 +14,7 @@ import com.s8.arch.silicon.watch.WatchTask;
  * @author pierreconvert
  *
  */
-public class SelectKeys implements WatchTask {
+public class SelectKeys implements WatchSiTask {
 
 
 	private final RxServer server;
@@ -24,7 +24,7 @@ public class SelectKeys implements WatchTask {
 	}
 	
 	@Override
-	public WatchTask run() {
+	public WatchSiTask run() {
 
 		try {
 
