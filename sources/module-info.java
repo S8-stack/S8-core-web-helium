@@ -31,6 +31,7 @@ module com.s8.web.helium {
 	exports com.s8.stack.arch.helium.http2.utilities;
 	
 	
+	requires transitive com.s8.api;
 	requires transitive com.s8.io.bytes;
 	requires transitive com.s8.io.xml;
 	requires transitive com.s8.arch.silicon;

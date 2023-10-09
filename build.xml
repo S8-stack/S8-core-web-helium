@@ -6,10 +6,11 @@
 	<property name="stack" value="/Users/pc/qx/git/com.s8.stack/modules" />
 	<property name="stack-sources" value="/Users/pc/qx/git/com.s8.stack/mod-sources" />
 	<property name="jar-path" value="${stack}/${name}.jar" />
-	<property name="d0" value="${stack}/s8-io-xml.jar" />
-	<property name="d1" value="${stack}/s8-io-bytes.jar" />
-	<property name="d2" value="${stack}/s8-arch-silicon.jar" />
-	<property name="dependencies" value="${d0}:${d1}:${d2}" />
+	<property name="d0" value="${stack}/s8-api.jar" />
+	<property name="d1" value="${stack}/s8-io-xml.jar" />
+	<property name="d2" value="${stack}/s8-io-bytes.jar" />
+	<property name="d3" value="${stack}/s8-arch-silicon.jar" />
+	<property name="dependencies" value="${d0}:${d1}:${d2}:${d3}" />
 	<property name="version" value="1.1.1" />
 	<property name="javahome" value="/Library/Java/JavaVirtualMachines/jdk-19.jdk/Contents/Home" />
 
