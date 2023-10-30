@@ -1,9 +1,9 @@
 package com.s8.stack.arch.tests.web.http2;
 
-import com.s8.stack.arch.helium.http2.hpack.HPACK_Context;
-import com.s8.stack.arch.helium.http2.hpack.HPACK_Data;
-import com.s8.stack.arch.helium.http2.hpack.HPACK_Decoder;
-import com.s8.stack.arch.helium.http2.hpack.HPACK_Encoder;
+import com.s8.core.web.helium.http2.hpack.HPACK_Context;
+import com.s8.core.web.helium.http2.hpack.HPACK_Data;
+import com.s8.core.web.helium.http2.hpack.HPACK_Decoder;
+import com.s8.core.web.helium.http2.hpack.HPACK_Encoder;
 
 public class HPACK_HeaderTest02 {
 

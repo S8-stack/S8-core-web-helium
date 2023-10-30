@@ -1,6 +1,6 @@
 package com.s8.stack.arch.tests.web.footprint;
 
-import com.s8.stack.arch.helium.http2.messages.HTTP2_Message;
+import com.s8.core.web.helium.http2.messages.HTTP2_Message;
 
 public class TestingManyMessages {
 

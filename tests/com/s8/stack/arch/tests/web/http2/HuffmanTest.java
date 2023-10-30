@@ -3,7 +3,7 @@ package com.s8.stack.arch.tests.web.http2;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import com.s8.stack.arch.helium.http2.hpack.Huffman;
+import com.s8.core.web.helium.http2.hpack.Huffman;
 
 
 public class HuffmanTest {

@@ -3,18 +3,18 @@ package com.s8.stack.arch.tests.web.http1;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import com.s8.arch.silicon.SiliconConfiguration;
-import com.s8.arch.silicon.SiliconEngine;
-import com.s8.stack.arch.helium.http1.HTTP1_Connection;
-import com.s8.stack.arch.helium.http1.HTTP1_Endpoint;
-import com.s8.stack.arch.helium.http1.HTTP1_Server;
-import com.s8.stack.arch.helium.http1.HTTP1_WebConfiguration;
-import com.s8.stack.arch.helium.http1.headers.ContentLength;
-import com.s8.stack.arch.helium.http1.headers.ContentType;
-import com.s8.stack.arch.helium.http1.headers.MIME_Type;
-import com.s8.stack.arch.helium.http1.headers.TransferEncoding;
-import com.s8.stack.arch.helium.http1.messages.HTTP1_Request;
-import com.s8.stack.arch.helium.http1.messages.HTTP1_Response;
+import com.s8.core.arch.silicon.SiliconConfiguration;
+import com.s8.core.arch.silicon.SiliconEngine;
+import com.s8.core.web.helium.http1.HTTP1_Connection;
+import com.s8.core.web.helium.http1.HTTP1_Endpoint;
+import com.s8.core.web.helium.http1.HTTP1_Server;
+import com.s8.core.web.helium.http1.HTTP1_WebConfiguration;
+import com.s8.core.web.helium.http1.headers.ContentLength;
+import com.s8.core.web.helium.http1.headers.ContentType;
+import com.s8.core.web.helium.http1.headers.MIME_Type;
+import com.s8.core.web.helium.http1.headers.TransferEncoding;
+import com.s8.core.web.helium.http1.messages.HTTP1_Request;
+import com.s8.core.web.helium.http1.messages.HTTP1_Response;
 
 public class HTTP1_HelloWorld {
 

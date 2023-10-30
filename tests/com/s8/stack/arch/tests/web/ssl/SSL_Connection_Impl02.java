@@ -3,10 +3,10 @@ package com.s8.stack.arch.tests.web.ssl;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import com.s8.stack.arch.helium.ssl.SSL_Connection;
-import com.s8.stack.arch.helium.ssl.SSL_Endpoint;
-import com.s8.stack.arch.helium.ssl.inbound.SSL_Inbound;
-import com.s8.stack.arch.helium.ssl.outbound.SSL_Outbound;
+import com.s8.core.web.helium.ssl.SSL_Connection;
+import com.s8.core.web.helium.ssl.SSL_Endpoint;
+import com.s8.core.web.helium.ssl.inbound.SSL_Inbound;
+import com.s8.core.web.helium.ssl.outbound.SSL_Outbound;
 
 public class SSL_Connection_Impl02 extends SSL_Connection {
 

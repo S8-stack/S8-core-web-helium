@@ -4,7 +4,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLParameters;
 
-import com.s8.stack.arch.helium.ssl.SSL_Module;
+import com.s8.core.web.helium.ssl.SSL_Module;
 
 public class SSL_Test01 {
 

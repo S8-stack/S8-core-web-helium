@@ -1,8 +1,8 @@
 package com.s8.stack.arch.tests.web.ssl;
 
-import com.s8.stack.arch.helium.ssl.SSL_Connection;
-import com.s8.stack.arch.helium.ssl.SSL_WebConfiguration;
-import com.s8.stack.arch.helium.ssl.inbound.SSL_Inbound;
+import com.s8.core.web.helium.ssl.SSL_Connection;
+import com.s8.core.web.helium.ssl.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.inbound.SSL_Inbound;
 
 public abstract class SSL_Inbound_Impl02 extends SSL_Inbound {
 

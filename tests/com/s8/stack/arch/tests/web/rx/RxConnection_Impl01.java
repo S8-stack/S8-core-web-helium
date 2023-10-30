@@ -3,10 +3,10 @@ package com.s8.stack.arch.tests.web.rx;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import com.s8.stack.arch.helium.rx.RxConnection;
-import com.s8.stack.arch.helium.rx.RxEndpoint;
-import com.s8.stack.arch.helium.rx.RxInbound;
-import com.s8.stack.arch.helium.rx.RxOutbound;
+import com.s8.core.web.helium.rx.RxConnection;
+import com.s8.core.web.helium.rx.RxEndpoint;
+import com.s8.core.web.helium.rx.RxInbound;
+import com.s8.core.web.helium.rx.RxOutbound;
 
 public class RxConnection_Impl01 extends RxConnection {
 	

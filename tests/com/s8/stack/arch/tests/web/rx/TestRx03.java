@@ -7,13 +7,13 @@ import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.s8.arch.silicon.SiliconConfiguration;
-import com.s8.arch.silicon.SiliconEngine;
-import com.s8.stack.arch.helium.rx.NetworkBufferResizer;
-import com.s8.stack.arch.helium.rx.RxClient;
-import com.s8.stack.arch.helium.rx.RxConnection;
-import com.s8.stack.arch.helium.rx.RxServer;
-import com.s8.stack.arch.helium.rx.RxWebConfiguration;
+import com.s8.core.arch.silicon.SiliconConfiguration;
+import com.s8.core.arch.silicon.SiliconEngine;
+import com.s8.core.web.helium.rx.NetworkBufferResizer;
+import com.s8.core.web.helium.rx.RxClient;
+import com.s8.core.web.helium.rx.RxConnection;
+import com.s8.core.web.helium.rx.RxServer;
+import com.s8.core.web.helium.rx.RxWebConfiguration;
 
 public class TestRx03 {
 
