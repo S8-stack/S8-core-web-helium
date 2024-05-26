@@ -50,6 +50,8 @@ public enum MIME_Type {
 	
 	MPEG(AUDIO, "mpeg", ".mpeg"),
 	
+	MP4(VIDEO, "mp4", ".mp4"),
+	
 	CSS(MIME_TopType.TEXT, "css", ".css"),
 	
 	HTML(MIME_TopType.TEXT, "html", ".html"),
