@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import com.s8.core.io.xml.annotations.XML_SetElement;
 import com.s8.core.io.xml.annotations.XML_Type;
 import com.s8.core.io.xml.codebase.XML_Codebase;
-import com.s8.core.web.helium.ssl.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
 
 @XML_Type(root = true, name="HTTP2_WebConfiguration", sub= {})
 public class HTTP2_WebConfiguration extends SSL_WebConfiguration {

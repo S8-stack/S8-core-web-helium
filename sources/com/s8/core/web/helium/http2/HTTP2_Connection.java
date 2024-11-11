@@ -12,7 +12,7 @@ import com.s8.core.web.helium.http2.messages.HTTP2_Message;
 import com.s8.core.web.helium.http2.settings.HTTP2_Settings;
 import com.s8.core.web.helium.http2.streams.HTTP2_Stream;
 import com.s8.core.web.helium.http2.streams.HTTP2_StreamMapping;
-import com.s8.core.web.helium.ssl.SSL_Connection;
+import com.s8.core.web.helium.ssl.v1.SSL_Connection;
 
 
 /**

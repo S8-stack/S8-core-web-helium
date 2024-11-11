@@ -8,9 +8,9 @@ import java.nio.channels.SocketChannel;
 import com.s8.core.arch.silicon.SiliconConfiguration;
 import com.s8.core.arch.silicon.SiliconEngine;
 import com.s8.core.web.helium.rx.RxConnection;
-import com.s8.core.web.helium.ssl.SSL_Client;
-import com.s8.core.web.helium.ssl.SSL_Server;
-import com.s8.core.web.helium.ssl.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.v1.SSL_Client;
+import com.s8.core.web.helium.ssl.v1.SSL_Server;
+import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
 
 public class SSL_RoundTrip02 {
 

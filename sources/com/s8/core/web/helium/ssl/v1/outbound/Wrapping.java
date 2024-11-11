@@ -1,9 +1,9 @@
-package com.s8.core.web.helium.ssl.outbound;
+package com.s8.core.web.helium.ssl.v1.outbound;
 
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 
-import com.s8.core.web.helium.ssl.outbound.SSL_Outbound.Flow;
+import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound.Flow;
 
 /**
  * 

@@ -7,7 +7,7 @@ import java.io.OutputStreamWriter;
 import java.io.Writer;
 
 import com.s8.core.io.xml.codebase.XML_Codebase;
-import com.s8.core.web.helium.ssl.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
 
 public class XSD_Generator {
 

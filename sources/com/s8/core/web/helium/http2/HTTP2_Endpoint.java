@@ -1,7 +1,7 @@
 package com.s8.core.web.helium.http2;
 
 import com.s8.core.web.helium.http2.hpack.HPACK_Context;
-import com.s8.core.web.helium.ssl.SSL_Endpoint;
+import com.s8.core.web.helium.ssl.v1.SSL_Endpoint;
 
 public interface HTTP2_Endpoint extends SSL_Endpoint {
 

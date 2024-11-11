@@ -1,9 +1,10 @@
-package com.s8.core.web.helium.ssl.outbound;
+package com.s8.core.web.helium.ssl.v1.outbound;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.Status;
 import javax.net.ssl.SSLException;
+
 
 /**
  * Just flush bytes, but do not require re-launching 
@@ -11,29 +12,32 @@ import javax.net.ssl.SSLException;
  * 
  * 
  */
-class Closing extends Mode {
+class ShuttingDown extends Mode {
 
-	public Closing() {
+	/**
+	 * 
+	 * @param outbound
+	 */
+	public ShuttingDown() {
 		super();
 	}
 
-	
+
 	@Override
 	public String declare() {
-		return "is closing...";
+		return "is shutting down...";
 	}
-	
-	
+
+
 	@Override
 	public void run(SSL_Outbound.Flow flow) {
 
-		
+
 		SSLEngine engine = flow.getEngine();
-		
+
 		/*
 		 * Closing this side of the engine
 		 */
-		engine.closeOutbound();
 
 
 		/* wrapping */
@@ -66,16 +70,17 @@ class Closing extends Mode {
 				}
 			}
 
-			/*
-			 * All data obtained from the wrap() method should be sent to the peer.
-			 */
-			flow.then(new Flushing());
 		}
 		catch (SSLException e) {
 			e.printStackTrace();
-
-			// stop here, with no callback
-			flow.stop();
 		}
+
+		// close outbound
+		engine.closeOutbound();
+		
+		flow.getConnection().close();
+
+		// stop here, don't trigger sending, with no callback
+		flow.stop();
 	}
 }

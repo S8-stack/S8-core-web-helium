@@ -2,7 +2,7 @@ package com.s8.stack.arch.tests.web.ssl;
 
 import javax.net.ssl.SSLContext;
 
-import com.s8.core.web.helium.ssl.SSL_Module;
+import com.s8.core.web.helium.ssl.v1.SSL_Module;
 
 public class SSL_Test02 {
 

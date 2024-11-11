@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl.outbound;
+package com.s8.core.web.helium.ssl.v1.outbound;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -8,9 +8,9 @@ import javax.net.ssl.SSLException;
 
 import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxOutbound;
-import com.s8.core.web.helium.ssl.SSL_Connection;
-import com.s8.core.web.helium.ssl.SSL_WebConfiguration;
-import com.s8.core.web.helium.ssl.inbound.SSL_Inbound;
+import com.s8.core.web.helium.ssl.v1.SSL_Connection;
+import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound;
 
 
 /**

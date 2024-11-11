@@ -1,8 +1,8 @@
-package com.s8.core.web.helium.ssl.inbound;
+package com.s8.core.web.helium.ssl.v1.inbound;
 
 import javax.net.ssl.SSLException;
 
-import com.s8.core.web.helium.ssl.inbound.SSL_Inbound.Flow;
+import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound.Flow;
 
 class Closing extends Mode {
 

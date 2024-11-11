@@ -1,8 +1,8 @@
-package com.s8.core.web.helium.ssl.inbound;
+package com.s8.core.web.helium.ssl.v1.inbound;
 
 import java.io.IOException;
 
-import com.s8.core.web.helium.ssl.inbound.SSL_Inbound.Flow;
+import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound.Flow;
 
 abstract class Mode {
 

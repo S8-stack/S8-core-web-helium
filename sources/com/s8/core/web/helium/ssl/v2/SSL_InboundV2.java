@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl.inbound;
+package com.s8.core.web.helium.ssl.v2;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,9 +9,9 @@ import javax.net.ssl.SSLException;
 
 import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxInbound;
-import com.s8.core.web.helium.ssl.SSL_Connection;
-import com.s8.core.web.helium.ssl.SSL_WebConfiguration;
-import com.s8.core.web.helium.ssl.outbound.SSL_Outbound;
+import com.s8.core.web.helium.ssl.v1.SSL_Connection;
+import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound;
 
 
 /**
@@ -20,7 +20,7 @@ import com.s8.core.web.helium.ssl.outbound.SSL_Outbound;
  * @author pc
  *
  */
-public abstract class SSL_Inbound extends RxInbound {
+public abstract class SSL_InboundV2 extends RxInbound {
 
 
 	/**
@@ -59,7 +59,7 @@ public abstract class SSL_Inbound extends RxInbound {
 	 * 
 	 * @param channel
 	 */
-	public SSL_Inbound(SSL_WebConfiguration configuration) {
+	public SSL_InboundV2(SSL_WebConfiguration configuration) {
 		super(NETWORK_INPUT_STARTING_CAPACITY, configuration);
 
 		this.SSL_isVerbose = configuration.isSSLVerbose();
@@ -268,7 +268,7 @@ public abstract class SSL_Inbound extends RxInbound {
 		}
 
 		public SSL_Connection getConnection() { 
-			return SSL_Inbound.this.getConnection();
+			return SSL_InboundV2.this.getConnection();
 		}
 
 		public boolean isVerbose() { 

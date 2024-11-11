@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.s8.core.web.helium.http2.frames.HTTP2_Frame;
 import com.s8.core.web.helium.http2.frames.SendingFrameHeader;
 import com.s8.core.web.helium.http2.utilities.SendingPreface;
-import com.s8.core.web.helium.ssl.outbound.SSL_Outbound;
+import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound;
 
 public class HTTP2_Outbound extends SSL_Outbound {
 	

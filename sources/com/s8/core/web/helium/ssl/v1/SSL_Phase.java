@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl;
+package com.s8.core.web.helium.ssl.v1;
 
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLEngineResult.Status;

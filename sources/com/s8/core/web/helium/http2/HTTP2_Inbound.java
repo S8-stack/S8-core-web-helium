@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 import com.s8.core.web.helium.http2.settings.HTTP2_Settings;
 import com.s8.core.web.helium.http2.utilities.ReceivingPreface;
-import com.s8.core.web.helium.ssl.inbound.SSL_Inbound;
+import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound;
 
 public class HTTP2_Inbound extends SSL_Inbound {
 

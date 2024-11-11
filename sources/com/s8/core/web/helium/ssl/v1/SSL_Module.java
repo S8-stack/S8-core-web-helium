@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl;
+package com.s8.core.web.helium.ssl.v1;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
