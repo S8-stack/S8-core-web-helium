@@ -59,7 +59,7 @@ class ShuttingDown extends Mode {
 						flow.getNetworkBuffer());
 
 				if(flow.isVerbose()) {
-					System.out.println(flow.getName()+": "+result);
+					System.out.println("[SSL_Outbound]: " + result);
 				}
 
 				// end point listening to result for updating phase

@@ -15,7 +15,7 @@ abstract class Mode {
 	
 	public void advertise(SSL_Outbound.Flow outbound) {
 		if(outbound.isVerbose()) {
-			System.out.println("\t--->"+outbound.getName()+": "+declare());
+			System.out.println("\t--->[SSL_Outbound]: " + declare());
 		}
 	}
 	

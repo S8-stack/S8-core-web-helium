@@ -45,7 +45,7 @@ class Unwrapping extends Mode {
 			SSLEngineResult	result = flow.unwrap();
 
 			if(flow.isVerbose()) {
-				System.out.println(flow.getName()+": "+result);
+				System.out.println("[SSL_Inbound]: "+result);
 			}
 
 			// drain as soon as bytes available
@@ -263,7 +263,7 @@ class Unwrapping extends Mode {
 		int increasedSize = 2 * applicationBuffer.capacity();
 		if (flow.isVerbose()) {
 			System.out
-			.println("[SSL/" + flow.getName() + "] " + "Application input buffer capacity increased to " + increasedSize);
+			.println("[SSL_Inbound] Application input buffer capacity increased to " + increasedSize);
 		}
 
 		if (increasedSize > 4 * flow.getEngine().getSession().getApplicationBufferSize()) {

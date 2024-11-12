@@ -25,7 +25,6 @@ import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound;
  */
 public abstract class SSL_Outbound extends RxOutbound {
 
-	private String name;
 
 	private SSLEngine engine;
 
@@ -117,9 +116,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 		
 		this.engine = connection.ssl_getEngine();
 
-		
 		this.inbound = connection.getInbound();
-		name = connection.getName()+".outbound";
 	}
 
 
@@ -144,7 +141,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 	public void wrap() {
 		
 		if(SSL_isVerbose) {
-			System.out.println(name+" wrapping required");
+			System.out.println("[SSL_Outbound] wrapping required");
 		}
 		
 		if(flow!=null) {
@@ -205,7 +202,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 			}
 
 			if(SSL_isVerbose) {
-				System.out.println(name+": is exiting process...");
+				System.out.println("[SSL_Outbound] : is exiting process...");
 			}
 		}
 
@@ -231,7 +228,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 		
 		public void unwrap() {
 			if(SSL_isVerbose) {
-				System.out.println("\t--->"+name+" is requesting unwrap...");	
+				System.out.println("\t--->[SSL_Outbound] is requesting unwrap...");	
 			}
 
 			// trigger unwrapping
@@ -257,10 +254,6 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 		public ByteBuffer getApplicationBuffer() { 
 			return applicationBuffer;
-		}
-
-		public String getName() { 
-			return name; 
 		}
 
 		public SSLEngine getEngine() { 
@@ -330,8 +323,8 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 			int increasedCapacity = 2 * networkBuffer.capacity();
 			if (SSL_isVerbose) {
-				System.out.println("[SSL] "+name
-				+ " : Network output buffer capacity increased to " + increasedCapacity);
+				System.out.println("[SSL_Outbound] " +
+				 " : Network output buffer capacity increased to " + increasedCapacity);
 			}
 			if (increasedCapacity > 4 * engine.getSession().getPacketBufferSize()) {
 				throw new SSLException(

@@ -14,7 +14,7 @@ abstract class Mode {
 	
 	public void advertise(Flow process) {
 		if(process.isVerbose()) {
-			System.out.println("\t--->"+process.getName()+": "+advertise());
+			System.out.println("\t--->[SSL_Inbound] : "+advertise());
 		}
 	}
 

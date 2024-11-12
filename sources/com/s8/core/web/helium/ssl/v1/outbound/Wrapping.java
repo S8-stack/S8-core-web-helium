@@ -48,7 +48,7 @@ class Wrapping extends Mode {
 						flow.getNetworkBuffer());
 
 				if(flow.isVerbose()) {
-					System.out.println(flow.getName()+": "+wrapResult);
+					System.out.println("[SSL_Outbound]: "+wrapResult);
 				}
 
 				// end point listening to result for updating phase

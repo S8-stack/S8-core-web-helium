@@ -38,7 +38,6 @@ public abstract class SSL_Inbound extends RxInbound {
 
 	//private RxInbound base;
 
-	String name;
 
 	SSLEngine engine;
 
@@ -119,7 +118,6 @@ public abstract class SSL_Inbound extends RxInbound {
 		this.engine = connection.ssl_getEngine();
 
 		this.outbound = connection.getOutbound();
-		name = connection.getName()+".inbound";
 	}
 
 
@@ -137,7 +135,7 @@ public abstract class SSL_Inbound extends RxInbound {
 	public void unwrap() {
 		
 		if(SSL_isVerbose) {
-			System.out.println(name+": Unwrapping required");
+			System.out.println("[SSL_Inbound] : Unwrapping required");
 		}
 
 		if(flow!=null) {
@@ -198,7 +196,7 @@ public abstract class SSL_Inbound extends RxInbound {
 			}
 
 			if(SSL_isVerbose) {
-				System.out.println(name+" is exiting process...");
+				System.out.println("[SSL_Inbound] : is exiting process...");
 			}
 		}
 
@@ -249,10 +247,6 @@ public abstract class SSL_Inbound extends RxInbound {
 			return (applicationBuffer = ByteBuffer.allocate(increasedCapacity));
 		}
 
-		public String getName() { 
-			return name; 
-		}
-
 		public SSLEngine getEngine() { 
 			return engine; 
 		}
@@ -293,7 +287,7 @@ public abstract class SSL_Inbound extends RxInbound {
 		
 		public void wrap() {
 			if(SSL_isVerbose) {
-				System.out.println("\t--->"+name+" is requesting wrap...");	
+				System.out.println("\t--->[SSL_Inbound] is requesting wrap...");	
 			}
 
 			// trigger wrapping
@@ -318,7 +312,7 @@ public abstract class SSL_Inbound extends RxInbound {
 
 			int increasedCapacity = 2 * networkBuffer.capacity();
 			if (SSL_isVerbose) {
-				System.out.println("[SSL_NetworkInput] " + name + 
+				System.out.println("[SSL_Inbound] : SSL_NetworkInput "+ 
 						" -> Network input buffer capacity increased to " 
 						+ increasedCapacity);
 			}
