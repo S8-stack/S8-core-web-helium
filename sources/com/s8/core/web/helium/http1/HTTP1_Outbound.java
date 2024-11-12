@@ -1,13 +1,11 @@
 package com.s8.core.web.helium.http1;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 import com.s8.core.web.helium.http1.HTTP1_IOReactive.Result;
 import com.s8.core.web.helium.http1.messages.HTTP1_Response;
-import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxConnection;
 import com.s8.core.web.helium.rx.RxOutbound;
 
@@ -58,7 +56,7 @@ public class HTTP1_Outbound extends RxOutbound {
 	}
 
 	@Override
-	public void onRxSending(ByteBuffer networkBuffer, NetworkBufferResizer resizer) {
+	public void onRxSending() {
 		pull();
 		
 		boolean isSending = composing!=null;
@@ -87,12 +85,12 @@ public class HTTP1_Outbound extends RxOutbound {
 
 
 	@Override
-	public void onRxRemotelyClosed(ByteBuffer networkBuffer) {
+	public void onRxRemotelyClosed() {
 		connection.close();
 	}
 
 	@Override
-	public void onRxFailed(ByteBuffer networkBuffer, IOException exception) {
+	public void onRxFailed(IOException exception) {
 		connection.close();	
 	}
 

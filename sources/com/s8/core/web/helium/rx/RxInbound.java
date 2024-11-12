@@ -18,12 +18,12 @@ import java.nio.channels.SocketChannel;
  *
  */
 public abstract class RxInbound {
-	
-	
+
+
 	public enum Need {
-		
+
 		NONE, RECEIVE, SHUT_DOWN;
-		
+
 	}
 
 
@@ -39,13 +39,17 @@ public abstract class RxInbound {
 	 * @param resizer a handler to trigger resizing
 	 * @throws IOException 
 	 */
-	public abstract void onRxReceived(ByteBuffer networkBuffer, NetworkBufferResizer resizer) throws IOException;
+	public abstract void onRxReceived() throws IOException;
 
 
-	public abstract void onRxRemotelyClosed(ByteBuffer networkBuffer) throws IOException;
+	/**
+	 * 
+	 * @throws IOException
+	 */
+	public abstract void onRxRemotelyClosed() throws IOException;
 
 
-	public abstract void onRxReceptionFailed(ByteBuffer networkBuffer, IOException exception) throws IOException;
+	public abstract void onRxReceptionFailed(IOException exception) throws IOException;
 
 	/**
 	 * the channel
@@ -72,23 +76,18 @@ public abstract class RxInbound {
 
 
 
-	public ByteBuffer networkBuffer;
+	/**
+	 * MUST be left in READ mode.
+	 */
+	protected ByteBuffer networkBuffer;
 
 	private int nBytes;
 
-	
+
 	/**
 	 * Settings
 	 */
 	public final boolean Rx_isVerbose;
-
-	private NetworkBufferResizer resizer = new NetworkBufferResizer() {
-
-		@Override
-		public ByteBuffer resizeNetworkBuffer(int capacity) {
-			return (networkBuffer = ByteBuffer.allocate(capacity));
-		}		
-	};
 
 
 
@@ -104,12 +103,38 @@ public abstract class RxInbound {
 		networkBuffer.limit(0);
 	}
 
-	
+
 	public abstract RxConnection getConnection();
 
-	
-	
-	
+
+
+	/**
+	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
+	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
+	 * with capacity twice the size of the initial one.
+	 *
+	 * @param buffer - the buffer to be enlarged.
+	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
+	 * @return A new buffer with a larger capacity.
+	 */
+	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
+
+		/* allocate new buffer */
+		ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity > networkBuffer.capacity() ? 
+				sessionProposedCapacity : 
+					networkBuffer.capacity() * 2);
+		
+		/* copy remaining content */
+		extendedBuffer.put(networkBuffer);
+		
+		/* replace */
+		networkBuffer = extendedBuffer;
+		
+		/* network buffer is now in READ mode */
+		networkBuffer.flip();
+	}
+
+
 	/**
 	 * 
 	 * @param connection
@@ -117,9 +142,9 @@ public abstract class RxInbound {
 	public void Rx_bind(RxConnection connection) {
 		this.socketChannel = connection.getSocketChannel();
 	}
-	
-	
-	
+
+
+
 
 	public Need getState() {
 		return need;
@@ -131,8 +156,8 @@ public abstract class RxInbound {
 	 */
 	public void receive() {
 
-		
-		
+
+
 		/* <DEBUG> 
 
 		System.out.println(">>Receive asked (previously: "+need+")");
@@ -140,7 +165,7 @@ public abstract class RxInbound {
 			throw new RuntimeException("Cannot ask for sending once shut down has been requested");
 		}
 		</DEBUG> */
-		
+
 		// update flag
 		need = Need.RECEIVE;
 
@@ -159,10 +184,10 @@ public abstract class RxInbound {
 		try {
 
 			if(need==Need.RECEIVE) {
-				
+
 				// no opinion on what to do next
 				need = Need.NONE;
-			
+
 				/* buffer WRITE_MODE start of section */
 				// optimize inbound buffer free space
 				networkBuffer.compact();
@@ -171,7 +196,7 @@ public abstract class RxInbound {
 				nBytes = socketChannel.read(networkBuffer);
 
 				if(nBytes==-1) {
-					onRxRemotelyClosed(networkBuffer);
+					onRxRemotelyClosed();
 				}
 
 				// flip
@@ -179,7 +204,7 @@ public abstract class RxInbound {
 				/* buffer WRITE_MODE end of section */
 
 				// trigger callback function with buffer ready for reading
-				onRxReceived(networkBuffer, resizer);
+				onRxReceived();
 			}
 		}
 		catch(IOException exception) {
@@ -189,11 +214,11 @@ public abstract class RxInbound {
 				System.out.println("\t --> require SHUT_DOWN");
 			}
 
-			onRxReceptionFailed(networkBuffer, exception);
+			onRxReceptionFailed(exception);
 
 			need = Need.SHUT_DOWN;
 		}
-		
+
 		return need;
 	};
 

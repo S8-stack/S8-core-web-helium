@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLException;
 
-import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxOutbound;
 import com.s8.core.web.helium.ssl.v1.SSL_Connection;
 import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
@@ -86,10 +85,10 @@ public abstract class SSL_Outbound extends RxOutbound {
 	public abstract SSL_Connection getConnection();
 
 	@Override
-	public void onRxSending(ByteBuffer networkBuffer, NetworkBufferResizer resizer) throws IOException {
+	public void onRxSending() throws IOException {
 		Mode startMode = callback!=null?callback:new Wrapping();
 		callback = null; // reset callback
-		flow = new Flow(networkBuffer, resizer, startMode);
+		flow = new Flow(startMode);
 		flow.start();
 		
 		if(flow!=null && flow.isExhausted()) {
@@ -98,19 +97,19 @@ public abstract class SSL_Outbound extends RxOutbound {
 	}
 
 	@Override
-	public void onRxRemotelyClosed(ByteBuffer networkBuffer) {
+	public void onRxRemotelyClosed() {
 		getConnection().isClosed = true;
-		new Flow(networkBuffer, null, new Closing()).start();
+		new Flow(new Closing()).start();
 	}
 
 	@Override
-	public void onRxFailed(ByteBuffer networkBuffer, IOException exception) {
+	public void onRxFailed(IOException exception) {
 		if(SSL_isVerbose) {
 			exception.printStackTrace();
 		}
 		callback = null; // reset callback
 		getConnection().isClosed = true;
-		new Flow(networkBuffer, null, new ShuttingDown()).start();
+		new Flow(new ShuttingDown()).start();
 	}
 
 
@@ -169,11 +168,6 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 	class Flow {
 
-		
-		private ByteBuffer networkBuffer;
-		
-		private NetworkBufferResizer networkBufferResizer;
-		
 		private boolean isNextStepDefined;
 
 		// Next mode to be played
@@ -182,10 +176,8 @@ public abstract class SSL_Outbound extends RxOutbound {
 		//Must be reset after use
 		private boolean isRunning = false;
 
-		public Flow(ByteBuffer networkBuffer, NetworkBufferResizer networkBufferResizer, Mode mode) {
+		public Flow(Mode mode) {
 			super();
-			this.networkBuffer = networkBuffer;
-			this.networkBufferResizer = networkBufferResizer;
 			this.mode = mode;
 		}
 
@@ -261,20 +253,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 			return networkBuffer;
 		}
 
-		/**
-		 * Resize 
-		 * @param capacity
-		 * @return
-		 * @throws SSLException 
-		 */
-		public ByteBuffer resizeNetworkBuffer(int capacity) throws SSLException {
-			
-			if(networkBufferResizer==null) {
-				throw new SSLException("Network byte buffer resizer is not availbale for this flow.");
-			}
-			
-			return networkBufferResizer.resizeNetworkBuffer(capacity);
-		}
+		
 
 		public ByteBuffer getApplicationBuffer() { 
 			return applicationBuffer;
@@ -360,13 +339,8 @@ public abstract class SSL_Outbound extends RxOutbound {
 			}
 
 			// publish new network buffer
-			ByteBuffer extendedBuffer = networkBufferResizer.resizeNetworkBuffer(increasedCapacity);
-
-			networkBuffer.flip();
-			extendedBuffer.put(networkBuffer);
+			increaseNetwordBufferCapacity(increasedCapacity);
 			
-			networkBuffer = extendedBuffer;
-			//extendedBuffer.compact(); // left in write mode
 			again();
 		}
 	}

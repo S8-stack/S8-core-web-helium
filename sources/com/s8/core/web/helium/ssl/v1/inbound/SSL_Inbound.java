@@ -7,7 +7,6 @@ import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 
-import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxInbound;
 import com.s8.core.web.helium.ssl.v1.SSL_Connection;
 import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
@@ -76,12 +75,12 @@ public abstract class SSL_Inbound extends RxInbound {
 	public abstract SSL_Connection getConnection();
 
 	@Override
-	public void onRxReceived(ByteBuffer networkBuffer, NetworkBufferResizer networkBufferResizer) throws IOException {
+	public void onRxReceived() throws IOException {
 		Mode startMode = callback!=null?callback:new Unwrapping();
 		callback = null; // reset callback
 		
 		/* on fresh bytes, create new flow */
-		flow = new Flow(networkBuffer, networkBufferResizer, startMode);
+		flow = new Flow(startMode);
 		flow.start();
 		
 		/**
@@ -93,16 +92,16 @@ public abstract class SSL_Inbound extends RxInbound {
 	}
 
 	@Override
-	public void onRxRemotelyClosed(ByteBuffer networkBuffer) throws IOException {
+	public void onRxRemotelyClosed() throws IOException {
 		getConnection().isClosed = true;
-		new Flow(networkBuffer, null, new Closing()).start();
+		new Flow(new Closing()).start();
 	}
 	
 
 	@Override
-	public void onRxReceptionFailed(ByteBuffer networkBuffer, IOException exception) throws IOException {
+	public void onRxReceptionFailed(IOException exception) throws IOException {
 		getConnection().isClosed = true;
-		new Flow(networkBuffer, null, new Closing()).start();
+		new Flow(new Closing()).start();
 	}
 
 	public abstract void SSL_onReceived(ByteBuffer buffer);
@@ -169,18 +168,15 @@ public abstract class SSL_Inbound extends RxInbound {
 
 		private ByteBuffer networkBuffer;
 
-		private NetworkBufferResizer networkBufferResizer;
-
 		// Next mode to be played
 		private Mode mode;
 
 		//Must be reset after use
 		private boolean isRunning = false;
 
-		public Flow(ByteBuffer networkBuffer, NetworkBufferResizer networkBufferResizer, Mode mode) {
+		public Flow(Mode mode) {
 			super();
-			this.networkBuffer = networkBuffer;
-			this.networkBufferResizer = networkBufferResizer;
+			this.networkBuffer = SSL_Inbound.this.networkBuffer;
 			this.mode = mode;
 		}
 
@@ -244,12 +240,6 @@ public abstract class SSL_Inbound extends RxInbound {
 		 */
 		public ByteBuffer getNetworkBuffer() {
 			return networkBuffer;
-		}
-
-
-
-		public ByteBuffer resizeNetworkBuffer(int capacity) {
-			return networkBufferResizer.resizeNetworkBuffer(capacity);
 		}
 
 
@@ -326,10 +316,6 @@ public abstract class SSL_Inbound extends RxInbound {
 		 */
 		public void doubleNetworkInputCapacity() throws SSLException {
 
-			if(networkBufferResizer==null) {
-				throw new SSLException("Network buffer resizer is not available for this flow");
-			}
-			
 			int increasedCapacity = 2 * networkBuffer.capacity();
 			if (SSL_isVerbose) {
 				System.out.println("[SSL_NetworkInput] " + name + 
@@ -342,10 +328,7 @@ public abstract class SSL_Inbound extends RxInbound {
 						"Seen as excessive");
 			}
 
-			ByteBuffer extendedBuffer = networkBufferResizer.resizeNetworkBuffer(increasedCapacity);
-			networkBuffer.flip();
-			extendedBuffer.put(networkBuffer);
-			networkBuffer = extendedBuffer;
+			increaseNetwordBufferCapacity(increasedCapacity);
 		}
 
 

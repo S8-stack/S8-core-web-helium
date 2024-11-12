@@ -1,13 +1,11 @@
 package com.s8.stack.arch.tests.web.rx;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.arch.silicon.SiliconConfiguration;
 import com.s8.core.arch.silicon.SiliconEngine;
-import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxClient;
 import com.s8.core.web.helium.rx.RxConnection;
 import com.s8.core.web.helium.rx.RxServer;
@@ -47,36 +45,36 @@ public class TestRx02 {
 						new RxInbound_Impl01(1024, webConfig) {
 
 					@Override
-					public void onRxReceived(ByteBuffer buffer, NetworkBufferResizer resizer) throws IOException {
-						int length = buffer.remaining();
+					public void onRxReceived() throws IOException {
+						int length = networkBuffer.remaining();
 						byte[] bytes = new byte[length];
-						buffer.get(bytes);
+						networkBuffer.get(bytes);
 						System.out.println("Server > "+new String(bytes));
 
 						receive(); // always reading
 					}
 
 					@Override
-					public void onRxRemotelyClosed(ByteBuffer networkBuffer) {
+					public void onRxRemotelyClosed() {
 					}
 
 					@Override
-					public void onRxReceptionFailed(ByteBuffer networkBuffer, IOException exception) {
+					public void onRxReceptionFailed(IOException exception) {
 					}
 
 					
 				}, new RxOutbound_Impl01(1024, webConfig) {
 
 					@Override
-					public void onRxSending(ByteBuffer networkBuffer, NetworkBufferResizer resizer) {
+					public void onRxSending() {
 					}
 
 					@Override
-					public void onRxRemotelyClosed(ByteBuffer networkBuffer) {
+					public void onRxRemotelyClosed() {
 					}
 
 					@Override
-					public void onRxFailed(ByteBuffer networkBuffer, IOException exception) {
+					public void onRxFailed(IOException exception) {
 					}
 				});
 			}
@@ -104,21 +102,15 @@ public class TestRx02 {
 						new RxInbound_Impl01(1024, webConfig) {
 
 							@Override
-							public void onRxReceived(ByteBuffer networkBuffer, NetworkBufferResizer resizer) {
-								// TODO Auto-generated method stub
-								
+							public void onRxReceived() {
 							}
 
 							@Override
-							public void onRxRemotelyClosed(ByteBuffer networkBuffer) {
-								// TODO Auto-generated method stub
-								
+							public void onRxRemotelyClosed() {
 							}
 
 							@Override
-							public void onRxReceptionFailed(ByteBuffer networkBuffer, IOException exception) {
-								// TODO Auto-generated method stub
-								
+							public void onRxReceptionFailed(IOException exception) {
 							}
 
 							
@@ -126,9 +118,9 @@ public class TestRx02 {
 						new RxOutbound_Impl01(1024, webConfig) {
 
 							@Override
-							public void onRxSending(ByteBuffer outbound, NetworkBufferResizer resizer) throws IOException {
-								int n = Math.min(outbound.remaining(), bytes.length);
-								outbound.put(bytes, index, n);
+							public void onRxSending() throws IOException {
+								int n = Math.min(networkBuffer.remaining(), bytes.length);
+								networkBuffer.put(bytes, index, n);
 								index+=n;
 								if(index<bytes.length) {
 									send();
@@ -136,15 +128,11 @@ public class TestRx02 {
 							}
 
 							@Override
-							public void onRxRemotelyClosed(ByteBuffer networkBuffer) {
-								// TODO Auto-generated method stub
-								
+							public void onRxRemotelyClosed() {
 							}
 
 							@Override
-							public void onRxFailed(ByteBuffer networkBuffer, IOException exception) {
-								// TODO Auto-generated method stub
-								
+							public void onRxFailed(IOException exception) {
 							}
 
 						});

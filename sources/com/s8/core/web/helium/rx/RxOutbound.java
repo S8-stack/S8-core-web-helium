@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
+import javax.net.ssl.SSLSession;
+
 
 /**
  * <h1>IOReactive</h1>
@@ -33,19 +35,10 @@ public abstract class RxOutbound {
 
 
 	/**
-	 * the outbound byte buffer
+	 * the outbound byte buffer. MUST be left in WRITE mode.
 	 */
-	private ByteBuffer networkBuffer;
+	protected ByteBuffer networkBuffer;
 
-
-
-	private NetworkBufferResizer resizer = new NetworkBufferResizer() {
-
-		@Override
-		public ByteBuffer resizeNetworkBuffer(int capacity) {
-			return (networkBuffer = ByteBuffer.allocate(capacity));
-		}
-	};
 
 
 	/**
@@ -80,6 +73,31 @@ public abstract class RxOutbound {
 		this.socketChannel = getConnection().getSocketChannel();
 	}
 
+	/**
+	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
+	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
+	 * with capacity twice the size of the initial one.
+	 *
+	 * @param buffer - the buffer to be enlarged.
+	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
+	 * @return A new buffer with a larger capacity.
+	 */
+	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
+
+		/* allocate new buffer */
+		ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity > networkBuffer.capacity() ? 
+				sessionProposedCapacity : 
+					networkBuffer.capacity() * 2);
+		
+		/* put networkBuffer in READ mode */
+		networkBuffer.flip();
+
+		/* copy remaining content */
+		extendedBuffer.put(networkBuffer);
+		
+		/* replace (networkBuffer is in WRITE mode) */
+		networkBuffer = extendedBuffer;
+	}
 
 
 	/**
@@ -100,7 +118,7 @@ public abstract class RxOutbound {
 	 *         </ul>
 	 * @throws IOException 
 	 */
-	public abstract void onRxSending(ByteBuffer networkBuffer, NetworkBufferResizer resizer) throws IOException;
+	public abstract void onRxSending() throws IOException;
 
 
 	/**
@@ -108,7 +126,7 @@ public abstract class RxOutbound {
 	 * 
 	 * @return
 	 */
-	public abstract void onRxRemotelyClosed(ByteBuffer networkBuffer);
+	public abstract void onRxRemotelyClosed();
 
 
 	/**
@@ -116,7 +134,7 @@ public abstract class RxOutbound {
 	 * @param exception
 	 * @throws IOException 
 	 */
-	public abstract void onRxFailed(ByteBuffer networkBuffer, IOException exception);
+	public abstract void onRxFailed(IOException exception);
 
 	/**
 	 * 
@@ -134,7 +152,7 @@ public abstract class RxOutbound {
 
 
 				// write as much as possible (I/O operation is always expensive)
-				onRxSending(networkBuffer, resizer);
+				onRxSending();
 
 				/* buffer READ_MODE start of section */
 				// flip to prepare passing on socket channel
@@ -157,7 +175,7 @@ public abstract class RxOutbound {
 					// reset flag
 					need = Need.SHUT_DOWN;
 
-					onRxRemotelyClosed(networkBuffer);
+					onRxRemotelyClosed();
 				}
 			}
 		} 
@@ -173,7 +191,7 @@ public abstract class RxOutbound {
 			// reset flag
 			need = Need.SHUT_DOWN;
 
-			onRxFailed(networkBuffer, exception);
+			onRxFailed(exception);
 		}
 
 		return need;
