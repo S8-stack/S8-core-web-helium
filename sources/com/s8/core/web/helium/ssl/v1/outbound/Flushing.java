@@ -1,5 +1,7 @@
 package com.s8.core.web.helium.ssl.v1.outbound;
 
+import com.s8.core.web.helium.ssl.v1.SSL_Outbound;
+
 class Flushing extends Mode {
 
 

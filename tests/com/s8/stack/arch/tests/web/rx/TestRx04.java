@@ -22,21 +22,21 @@ public class TestRx04 {
 		
 		SiliconConfiguration appConfig = new SiliconConfiguration();
 		
-		SiliconEngine app = new SiliconEngine(appConfig);
-		app.start();
+		SiliconEngine ng = new SiliconEngine(appConfig);
+		ng.start();
 
 		RxServer server = new RxServer() {
 			
 			@Override
-			public SiliconEngine getEngine() {
-				return app;
+			public SiliconEngine getSiliconEngine() {
+				return ng;
 			}
 
 			@Override
 			public RxConnection open(SocketChannel socketChannel) throws IOException {
 
 				return new RxConnection_Impl01(this, socketChannel,
-						new RxInbound_Impl01(1024, webConfig) {
+						new RxInbound_Impl01("server", 1024, webConfig) {
 
 							@Override
 							public void onRxReceived() {
@@ -57,7 +57,7 @@ public class TestRx04 {
 							}
 							
 						}, 
-						new RxOutbound_Impl01(1024, webConfig) {
+						new RxOutbound_Impl01("server", 1024, webConfig) {
 
 							@Override
 							public void onRxSending() {
@@ -90,7 +90,7 @@ public class TestRx04 {
 			clientConfig.port = 1336;
 			clientConfig.hostname = "localhost";
 
-			TestClient client = new TestClient(clientConfig, "client"+i);
+			TestClient client = new TestClient(ng, clientConfig, "client"+i);
 			client.start();
 			clients[i]=client;
 		}
@@ -119,6 +119,7 @@ public class TestRx04 {
 
 	private static class TestClient extends RxClient {
 
+		public final SiliconEngine ng;
 		private String name;
 
 		private Queue<byte[]> queue;
@@ -129,8 +130,9 @@ public class TestRx04 {
 		
 		private RxWebConfiguration config;
 
-		public TestClient(RxWebConfiguration config, String name) {
+		public TestClient(SiliconEngine ng, RxWebConfiguration config, String name) {
 			super();
+			this.ng = ng;
 			this.name = name;
 			queue = new ConcurrentLinkedQueue<byte[]>();
 			this.config = config;
@@ -151,7 +153,7 @@ public class TestRx04 {
 		@Override
 		public RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException {
 			return new RxConnection_Impl01(this, socketChannel, 
-					new RxInbound_Impl01(1024, config) {
+					new RxInbound_Impl01("client", 1024, config) {
 
 						@Override
 						public void onRxReceived() {	
@@ -166,7 +168,7 @@ public class TestRx04 {
 							
 						}
 					}, 
-					new RxOutbound_Impl01(1024, config) {
+					new RxOutbound_Impl01("client", 1024, config) {
 
 						@Override
 						public void onRxSending() {
@@ -202,6 +204,11 @@ public class TestRx04 {
 
 		@Override
 		public void stop() throws Exception {
+		}
+
+		@Override
+		public SiliconEngine getSiliconEngine() {
+			return ng;
 		}
 	}
 

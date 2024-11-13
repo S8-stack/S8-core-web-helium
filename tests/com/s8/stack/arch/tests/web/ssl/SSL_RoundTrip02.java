@@ -21,10 +21,11 @@ public class SSL_RoundTrip02 {
 		SiliconConfiguration appConfiguration = new SiliconConfiguration();
 		
 		SSL_WebConfiguration serverConfig = SSL_WebConfiguration.load("config/ssl/server_config.xml");
+		//serverConfig.isRxVerbose = true;
 		
 		//SSLContext context = SSL_Module.createContext(serverConfig);
-		SiliconEngine app = new SiliconEngine(appConfiguration);
-		app.start();
+		SiliconEngine ng = new SiliconEngine(appConfiguration);
+		ng.start();
 		
 
 		SSL_Server server = new SSL_Server() {
@@ -33,7 +34,7 @@ public class SSL_RoundTrip02 {
 			public RxConnection open(SocketChannel socketChannel) throws IOException {
 
 				return new SSL_Connection_Impl02(this, socketChannel, 
-						new SSL_Inbound_Impl02(serverConfig) {
+						new SSL_Inbound_Impl02("server", serverConfig) {
 
 							@Override
 							public void SSL_onReceived(ByteBuffer buffer) {
@@ -43,7 +44,7 @@ public class SSL_RoundTrip02 {
 								System.out.println("[SSL_outbound (test)] "+new String(bytes));
 							}
 						},
-						new SSL_Outbound_Impl02(serverConfig) {
+						new SSL_Outbound_Impl02("server", serverConfig) {
 							private int count = 0;
 
 							@Override
@@ -65,10 +66,8 @@ public class SSL_RoundTrip02 {
 				return serverConfig;
 			}
 
-			@Override
-			public SiliconEngine getEngine() {
-				return app;
-			}
+			
+			public @Override SiliconEngine getSiliconEngine() { return ng; }
 		};
 		
 
@@ -80,7 +79,7 @@ public class SSL_RoundTrip02 {
 			@Override
 			public RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException {
 				return new SSL_Connection_Impl02(this, socketChannel, 
-						new SSL_Inbound_Impl02(clientConfig) {
+						new SSL_Inbound_Impl02("client", clientConfig) {
 
 							@Override
 							public void SSL_onReceived(ByteBuffer buffer) {
@@ -90,7 +89,7 @@ public class SSL_RoundTrip02 {
 								System.out.println("[SSL_Inbound (test)] "+new String(bytes));
 							}
 						},
-						new SSL_Outbound_Impl02(clientConfig) {
+						new SSL_Outbound_Impl02("client", clientConfig) {
 							private int count = 0;
 
 							@Override
@@ -117,6 +116,8 @@ public class SSL_RoundTrip02 {
 			@Override
 			public void stop() throws Exception {
 			}
+			
+			public @Override SiliconEngine getSiliconEngine() { return ng; }
 		};
 		
 		// lauching sequence

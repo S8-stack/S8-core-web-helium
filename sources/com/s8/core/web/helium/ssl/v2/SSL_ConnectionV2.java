@@ -9,8 +9,8 @@ import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLParameters;
 
 import com.s8.core.web.helium.rx.RxConnection;
-import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound;
-import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound;
+import com.s8.core.web.helium.ssl.v1.SSL_Inbound;
+import com.s8.core.web.helium.ssl.v1.SSL_Outbound;
 
 
 /**

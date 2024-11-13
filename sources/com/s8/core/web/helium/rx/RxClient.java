@@ -106,7 +106,7 @@ public abstract class RxClient implements RxEndpoint {
 
 					if(key!=null) {
 						connection.pushReadyOps();
-					}	
+					}
 				}
 
 

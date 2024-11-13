@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 import com.s8.core.web.helium.http2.settings.HTTP2_Settings;
 import com.s8.core.web.helium.http2.utilities.ReceivingPreface;
-import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound;
+import com.s8.core.web.helium.ssl.v1.SSL_Inbound;
 
 public class HTTP2_Inbound extends SSL_Inbound {
 
@@ -15,8 +15,8 @@ public class HTTP2_Inbound extends SSL_Inbound {
 	private boolean HTTP2_isVerbose;
 
 	
-	public HTTP2_Inbound(HTTP2_Connection connection, HTTP2_WebConfiguration configuration) {
-		super(configuration);
+	public HTTP2_Inbound(String name, HTTP2_Connection connection, HTTP2_WebConfiguration configuration) {
+		super(name, configuration);
 		this.connection = connection;
 		this.HTTP2_isVerbose = configuration.isHTTP2Verbose;
 	}

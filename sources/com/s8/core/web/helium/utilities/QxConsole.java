@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl.utilities;
+package com.s8.core.web.helium.utilities;
 
 public class QxConsole {
 	

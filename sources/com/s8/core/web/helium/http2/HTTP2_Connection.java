@@ -44,10 +44,10 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 
 	private boolean isVerbose;
 
-	public HTTP2_Connection(SocketChannel socketChannel, HTTP2_WebConfiguration configuration) throws IOException{
+	public HTTP2_Connection(String name, SocketChannel socketChannel, HTTP2_WebConfiguration configuration) throws IOException{
 		super(socketChannel);
-		inbound = new HTTP2_Inbound(this, configuration);
-		outbound = new HTTP2_Outbound(this, configuration);
+		inbound = new HTTP2_Inbound(name, this, configuration);
+		outbound = new HTTP2_Outbound(name, this, configuration);
 	}
 
 

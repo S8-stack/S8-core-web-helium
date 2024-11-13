@@ -48,7 +48,7 @@ public class HTTP1_HelloWorld {
 		}
 		
 		@Override
-		public SiliconEngine getEngine() {
+		public SiliconEngine getSiliconEngine() {
 			return app;
 		}
 	}

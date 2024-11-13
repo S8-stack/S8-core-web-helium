@@ -381,7 +381,7 @@ public abstract class RxConnection {
 				//
 				if(isRxLayerVerbose) {
 					System.out.println("[RxConnection]: connection push has encountered an error: "+exception.getMessage());
-					System.out.println("[RxConnection]: SKIPPE and continued");	
+					System.out.println("[RxConnection]: SKIPPED and continued");	
 				}
 
 				// close connection

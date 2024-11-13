@@ -26,6 +26,9 @@ public abstract class RxOutbound {
 
 		NONE, SEND, SHUT_DOWN;
 	}
+	
+	
+	public final String name;
 
 
 	/**
@@ -53,9 +56,11 @@ public abstract class RxOutbound {
 	private final boolean rx_isVerbose;
 
 
-	public RxOutbound(int capacity, RxWebConfiguration configuration) {
+	public RxOutbound(String name, int capacity, RxWebConfiguration configuration) {
 		super();
 
+		this.name = name  + ".outbound";
+		
 		this.need = Need.NONE;
 
 		networkBuffer = ByteBuffer.allocate(capacity);
@@ -83,20 +88,21 @@ public abstract class RxOutbound {
 	 * @return A new buffer with a larger capacity.
 	 */
 	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
-
-		/* allocate new buffer */
-		ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity > networkBuffer.capacity() ? 
-				sessionProposedCapacity : 
-					networkBuffer.capacity() * 2);
 		
-		/* put networkBuffer in READ mode */
-		networkBuffer.flip();
+		if(sessionProposedCapacity > networkBuffer.capacity()) {
+			
+			/* allocate new buffer */
+			ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity);
+			
+			/* put networkBuffer in READ mode */
+			networkBuffer.flip();
 
-		/* copy remaining content */
-		extendedBuffer.put(networkBuffer);
-		
-		/* replace (networkBuffer is in WRITE mode) */
-		networkBuffer = extendedBuffer;
+			/* copy remaining content */
+			extendedBuffer.put(networkBuffer);
+			
+			/* replace (networkBuffer is in WRITE mode) */
+			networkBuffer = extendedBuffer;	
+		}		
 	}
 
 
@@ -212,6 +218,8 @@ public abstract class RxOutbound {
 
 		// update flag
 		need = Need.SEND;
+		
+		getConnection().pullInterestOps();
 
 		// notify selector
 		getConnection().wakeup();

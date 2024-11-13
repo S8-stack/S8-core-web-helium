@@ -19,12 +19,16 @@ import java.nio.channels.SocketChannel;
  */
 public abstract class RxInbound {
 
+	
 
 	public enum Need {
 
 		NONE, RECEIVE, SHUT_DOWN;
 
 	}
+	
+
+	public final String name;
 
 
 
@@ -92,8 +96,9 @@ public abstract class RxInbound {
 
 
 
-	public RxInbound(int capacity, RxWebConfiguration configuration) {
+	public RxInbound(String name, int capacity, RxWebConfiguration configuration) {
 		super();
+		this.name = name + ".inbound";
 		need = Need.NONE;
 		networkBuffer = ByteBuffer.allocate(capacity);
 		this.Rx_isVerbose = configuration.isRxVerbose;
@@ -117,11 +122,11 @@ public abstract class RxInbound {
 	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
 	 * @return A new buffer with a larger capacity.
 	 */
-	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
+	protected void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
 
 		/* allocate new buffer */
-		ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity > networkBuffer.capacity() ? 
-				sessionProposedCapacity : 
+		ByteBuffer extendedBuffer = ByteBuffer.allocate(
+				sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
 					networkBuffer.capacity() * 2);
 		
 		/* copy remaining content */
@@ -168,6 +173,9 @@ public abstract class RxInbound {
 
 		// update flag
 		need = Need.RECEIVE;
+		
+
+		getConnection().pullInterestOps();
 
 		// notify selector
 		getConnection().wakeup();

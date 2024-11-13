@@ -19,8 +19,8 @@ public class TestRx03 {
 
 		SiliconConfiguration appConfig = new SiliconConfiguration();
 		
-		SiliconEngine app = new SiliconEngine(appConfig);
-		app.start();
+		SiliconEngine ng = new SiliconEngine(appConfig);
+		ng.start();
 		
 		RxWebConfiguration serverConfig = new RxWebConfiguration();
 		serverConfig.port = 1336;
@@ -28,8 +28,8 @@ public class TestRx03 {
 		RxServer server = new RxServer() {
 			
 			@Override
-			public SiliconEngine getEngine() {
-				return app;
+			public SiliconEngine getSiliconEngine() {
+				return ng;
 			}
 
 			@Override
@@ -41,7 +41,7 @@ public class TestRx03 {
 			public RxConnection open(SocketChannel channel) throws IOException {
 
 				return new RxConnection_Impl01(this, channel, 
-						new RxInbound_Impl01(1024, serverConfig) {
+						new RxInbound_Impl01("server", 1024, serverConfig) {
 					@Override
 					public void onRxReceived() {
 						int length = networkBuffer.remaining();
@@ -60,7 +60,7 @@ public class TestRx03 {
 					}
 					
 				}, 
-						new RxOutbound_Impl01(1024, serverConfig) {
+						new RxOutbound_Impl01("server", 1024, serverConfig) {
 
 							@Override
 							public void onRxSending() {
@@ -84,7 +84,7 @@ public class TestRx03 {
 		clientConfig.port = 1336;
 		clientConfig.hostname = "localhost";
 
-		TestClient client = new TestClient(clientConfig);
+		TestClient client = new TestClient(ng, clientConfig);
 		client.start();
 		while(true) {
 			Thread.sleep(500);
@@ -95,6 +95,8 @@ public class TestRx03 {
 
 	private static class TestClient extends RxClient {
 
+		private final SiliconEngine ng;
+		
 		private Queue<byte[]> queue;
 
 		private byte[] bytes;
@@ -103,8 +105,9 @@ public class TestRx03 {
 
 		private RxWebConfiguration config;
 
-		public TestClient(RxWebConfiguration config) {
+		public TestClient(SiliconEngine ng, RxWebConfiguration config) {
 			super();
+			this.ng = ng;
 			queue = new ConcurrentLinkedQueue<byte[]>();
 			this.config = config;
 		}
@@ -125,11 +128,13 @@ public class TestRx03 {
 		public RxWebConfiguration getWebConfiguration() {
 			return config;
 		}
+		
+		public @Override SiliconEngine getSiliconEngine() { return ng; }
 
 		@Override
 		public RxConnection open(Selector selector, SocketChannel channel) throws IOException {
 			return new RxConnection_Impl01(this, channel, 
-					new RxInbound_Impl01(1024, config) {
+					new RxInbound_Impl01("client", 1024, config) {
 
 						@Override
 						public void onRxReceived() {
@@ -144,7 +149,7 @@ public class TestRx03 {
 						}
 
 			}, 
-					new RxOutbound_Impl01(1024, config) {
+					new RxOutbound_Impl01("client", 1024, config) {
 
 				@Override
 				public void onRxSending() {

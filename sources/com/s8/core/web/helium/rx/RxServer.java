@@ -9,8 +9,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.s8.core.arch.silicon.SiliconEngine;
-
 
 /**
  * reactive web server 
@@ -42,12 +40,6 @@ public abstract class RxServer implements RxEndpoint {
 		super();
 	}
 	
-	
-	/**
-	 * 
-	 * @return the app layer
-	 */
-	public abstract SiliconEngine getEngine();
 
 
 	/**
@@ -124,7 +116,7 @@ public abstract class RxServer implements RxEndpoint {
 		serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
 		// start the system
-		getEngine().pushWatchTask(new SelectKeys(this));
+		getSiliconEngine().pushWatchTask(new SelectKeysTask(this));
 	}
 
 

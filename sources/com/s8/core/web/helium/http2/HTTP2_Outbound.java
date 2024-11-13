@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.s8.core.web.helium.http2.frames.HTTP2_Frame;
 import com.s8.core.web.helium.http2.frames.SendingFrameHeader;
 import com.s8.core.web.helium.http2.utilities.SendingPreface;
-import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound;
+import com.s8.core.web.helium.ssl.v1.SSL_Outbound;
 
 public class HTTP2_Outbound extends SSL_Outbound {
 	
@@ -21,8 +21,8 @@ public class HTTP2_Outbound extends SSL_Outbound {
 	
 	private HTTP2_Connection connection;
 	
-	public HTTP2_Outbound(HTTP2_Connection connection, HTTP2_WebConfiguration configuration) {
-		super(configuration);
+	public HTTP2_Outbound(String name, HTTP2_Connection connection, HTTP2_WebConfiguration configuration) {
+		super(name, configuration);
 		this.connection = connection;
 		/* 
 		 * Lock free queue implementing Atomic control new algos

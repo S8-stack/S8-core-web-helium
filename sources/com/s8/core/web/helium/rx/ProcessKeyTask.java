@@ -5,11 +5,11 @@ import java.nio.channels.SelectionKey;
 import com.s8.core.arch.silicon.async.AsyncSiTask;
 import com.s8.core.arch.silicon.async.MthProfile;
 
-public class ProcessKey implements AsyncSiTask {
+public class ProcessKeyTask implements AsyncSiTask {
 
 	private SelectionKey key;
 
-	public ProcessKey(SelectionKey key) {
+	public ProcessKeyTask(SelectionKey key) {
 		super();
 		this.key = key;
 	}

@@ -104,7 +104,7 @@ public class HTTP1_Redirection extends HTTP1_Server {
 	}
 
 	@Override
-	public SiliconEngine getEngine() {
+	public SiliconEngine getSiliconEngine() {
 		return app;
 	}
 }

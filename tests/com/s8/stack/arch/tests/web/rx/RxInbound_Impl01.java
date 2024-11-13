@@ -8,8 +8,8 @@ public abstract class RxInbound_Impl01 extends RxInbound {
 
 	RxConnection connection;
 	
-	public RxInbound_Impl01(int capacity, RxWebConfiguration configuration) {
-		super(capacity, configuration);
+	public RxInbound_Impl01(String name, int capacity, RxWebConfiguration configuration) {
+		super(name, capacity, configuration);
 	}
 
 

@@ -16,7 +16,7 @@ public abstract class HTTP2_ServerConnection extends HTTP2_Connection {
 
 	
 	public HTTP2_ServerConnection(SocketChannel socketChannel, HTTP2_WebConfiguration configuration) throws IOException {
-		super(socketChannel, configuration);
+		super("server", socketChannel, configuration);
 	}
 
 	/**

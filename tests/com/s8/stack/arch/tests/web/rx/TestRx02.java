@@ -22,16 +22,13 @@ public class TestRx02 {
 		
 		webConfig.port = 1336;
 		
-		SiliconEngine app = new SiliconEngine(appConfig);
+		SiliconEngine ng = new SiliconEngine(appConfig);
 		
-		app.start();
+		ng.start();
 
 		RxServer server = new RxServer() {
 			
-			@Override
-			public SiliconEngine getEngine() {
-				return app;
-			}
+			public @Override SiliconEngine getSiliconEngine() { return ng; }
 
 			@Override
 			public RxWebConfiguration getWebConfiguration() {
@@ -42,7 +39,7 @@ public class TestRx02 {
 			public RxConnection open(SocketChannel socketChannel) throws IOException {
 
 				return new RxConnection_Impl01(this, socketChannel, 
-						new RxInbound_Impl01(1024, webConfig) {
+						new RxInbound_Impl01("server", 1024, webConfig) {
 
 					@Override
 					public void onRxReceived() throws IOException {
@@ -63,7 +60,7 @@ public class TestRx02 {
 					}
 
 					
-				}, new RxOutbound_Impl01(1024, webConfig) {
+				}, new RxOutbound_Impl01("server", 1024, webConfig) {
 
 					@Override
 					public void onRxSending() {
@@ -86,6 +83,8 @@ public class TestRx02 {
 		clientConfig.hostname = "localhost";
 
 		RxClient client = new RxClient() {
+			
+			public @Override SiliconEngine getSiliconEngine() { return ng; }
 
 			private byte[] bytes = "Hi this is the client speaking now!!!zeoinzoicnpioz".getBytes();
 
@@ -99,7 +98,7 @@ public class TestRx02 {
 			@Override
 			public RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException {
 				return new RxConnection_Impl01(this, socketChannel, 
-						new RxInbound_Impl01(1024, webConfig) {
+						new RxInbound_Impl01("client", 1024, webConfig) {
 
 							@Override
 							public void onRxReceived() {
@@ -115,7 +114,7 @@ public class TestRx02 {
 
 							
 						},
-						new RxOutbound_Impl01(1024, webConfig) {
+						new RxOutbound_Impl01("client", 1024, webConfig) {
 
 							@Override
 							public void onRxSending() throws IOException {
