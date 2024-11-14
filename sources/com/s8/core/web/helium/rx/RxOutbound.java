@@ -40,7 +40,7 @@ public abstract class RxOutbound {
 	/**
 	 * the outbound byte buffer. MUST be left in WRITE mode.
 	 */
-	protected ByteBuffer networkBuffer;
+	public ByteBuffer networkBuffer;
 
 
 
@@ -52,18 +52,16 @@ public abstract class RxOutbound {
 	private int lastWriteBytecount;
 
 
-
 	private final boolean rx_isVerbose;
 
 
-	public RxOutbound(String name, int capacity, RxWebConfiguration configuration) {
+	public RxOutbound(String name, RxWebConfiguration configuration) {
 		super();
 
 		this.name = name  + ".outbound";
 		
 		this.need = Need.NONE;
 
-		networkBuffer = ByteBuffer.allocate(capacity);
 		this.rx_isVerbose = configuration.isRxVerbose;
 	}
 
@@ -76,6 +74,12 @@ public abstract class RxOutbound {
 	 */
 	public void Rx_bind(RxConnection connection) {
 		this.socketChannel = getConnection().getSocketChannel();
+		
+	}
+	
+	
+	public void initializeNetworkBuffer(int capacity) {
+		networkBuffer = ByteBuffer.allocate(capacity);
 	}
 
 	/**
@@ -87,7 +91,7 @@ public abstract class RxOutbound {
 	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
 	 * @return A new buffer with a larger capacity.
 	 */
-	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
+	public void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
 		
 		if(sessionProposedCapacity > networkBuffer.capacity()) {
 			
@@ -124,7 +128,16 @@ public abstract class RxOutbound {
 	 *         </ul>
 	 * @throws IOException 
 	 */
-	public abstract void onRxSending() throws IOException;
+	public abstract void onPreRxSending() throws IOException;
+	
+	/**
+	 * <p>
+	 * Callback function when write to socket channel has occured
+	 * </p>
+	 * 
+	 * @throws IOException 
+	 */
+	public abstract void onPostRxSending() throws IOException;
 
 
 	/**
@@ -153,12 +166,11 @@ public abstract class RxOutbound {
 
 			if(need==Need.SEND) {
 
-				// reset flag
-				need = Need.NONE;
+				
 
 
 				// write as much as possible (I/O operation is always expensive)
-				onRxSending();
+				onPreRxSending();
 
 				/* buffer READ_MODE start of section */
 				// flip to prepare passing on socket channel
@@ -173,10 +185,17 @@ public abstract class RxOutbound {
 				 * so compact (and switch to direct write mode) */
 				networkBuffer.compact();
 				/* buffer READ_MODE end of section */
+				
+				onPostRxSending();
 
 
-				// remote closing
-				if(lastWriteBytecount==-1) {
+				/* network buffer MUST be cleared to declare that we don't need anymore SEND */
+				if(networkBuffer.position() == 0) {
+					//
+					need = Need.NONE;
+				}
+				/* remote closing */
+				else if(lastWriteBytecount==-1) {
 
 					// reset flag
 					need = Need.SHUT_DOWN;
@@ -203,10 +222,7 @@ public abstract class RxOutbound {
 		return need;
 	}
 
-
-
 	public void send() {
-
 
 
 		/* <DEBUG> 
@@ -219,11 +235,14 @@ public abstract class RxOutbound {
 		// update flag
 		need = Need.SEND;
 		
+		
 		getConnection().pullInterestOps();
 
 		// notify selector
 		getConnection().wakeup();
 	}
+	
+	
 
 
 	public Need getState() {

@@ -12,6 +12,7 @@ module com.s8.core.web.helium {
 	exports com.s8.core.web.helium.rx;
 	
 	exports com.s8.core.web.helium.ssl.v1;
+	exports com.s8.core.web.helium.ssl.v1.inbound;
 	exports com.s8.core.web.helium.ssl.v1.outbound;
 	
 	exports com.s8.core.web.helium.ssl.v2;

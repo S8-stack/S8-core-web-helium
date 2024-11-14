@@ -36,7 +36,7 @@ public class TestRx04 {
 			public RxConnection open(SocketChannel socketChannel) throws IOException {
 
 				return new RxConnection_Impl01(this, socketChannel,
-						new RxInbound_Impl01("server", 1024, webConfig) {
+						new RxInbound_Impl01("server", webConfig) {
 
 							@Override
 							public void onRxReceived() {
@@ -48,29 +48,12 @@ public class TestRx04 {
 								receive(); // always reading
 							}
 
-							@Override
-							public void onRxRemotelyClosed() {
-							}
-
-							@Override
-							public void onRxReceptionFailed(IOException exception) {
-							}
-							
 						}, 
-						new RxOutbound_Impl01("server", 1024, webConfig) {
+						new RxOutbound_Impl01("server", webConfig) {
 
 							@Override
-							public void onRxSending() {
+							public void onPreRxSending() {
 							}
-
-							@Override
-							public void onRxRemotelyClosed() {
-							}
-
-							@Override
-							public void onRxFailed(IOException exception) {
-							}
-
 						});
 			}
 
@@ -153,25 +136,16 @@ public class TestRx04 {
 		@Override
 		public RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException {
 			return new RxConnection_Impl01(this, socketChannel, 
-					new RxInbound_Impl01("client", 1024, config) {
+					new RxInbound_Impl01("client", config) {
 
 						@Override
 						public void onRxReceived() {	
 						}
-
-						@Override
-						public void onRxRemotelyClosed() {
-						}
-
-						@Override
-						public void onRxReceptionFailed(IOException exception) {
-							
-						}
 					}, 
-					new RxOutbound_Impl01("client", 1024, config) {
+					new RxOutbound_Impl01("client", config) {
 
 						@Override
-						public void onRxSending() {
+						public void onPreRxSending() {
 							if(bytes==null) {
 								pull();
 							}
@@ -185,14 +159,6 @@ public class TestRx04 {
 								}
 								send(); // keep writing until all bytes written
 							}
-						}
-
-						@Override
-						public void onRxRemotelyClosed() {
-						}
-
-						@Override
-						public void onRxFailed(IOException exception) {
 						}
 					});
 		}

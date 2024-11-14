@@ -27,8 +27,8 @@ public class HTTP1_Inbound extends RxInbound {
 
 	private HTTP1_IOReactive parsing;
 
-	public HTTP1_Inbound(HTTP1_Connection connection, HTTP1_WebConfiguration configuration) {
-		super(NETWORK_INPUT_STARTING_CAPACITY, configuration);
+	public HTTP1_Inbound(String name, HTTP1_Connection connection, HTTP1_WebConfiguration configuration) {
+		super(name, configuration);
 		this.connection = connection;
 
 		this.request = new HTTP1_Request();

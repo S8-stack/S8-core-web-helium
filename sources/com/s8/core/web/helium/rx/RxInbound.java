@@ -19,14 +19,14 @@ import java.nio.channels.SocketChannel;
  */
 public abstract class RxInbound {
 
-	
+
 
 	public enum Need {
 
 		NONE, RECEIVE, SHUT_DOWN;
 
 	}
-	
+
 
 	public final String name;
 
@@ -83,7 +83,7 @@ public abstract class RxInbound {
 	/**
 	 * MUST be left in READ mode.
 	 */
-	protected ByteBuffer networkBuffer;
+	public ByteBuffer networkBuffer;
 
 	private int nBytes;
 
@@ -96,16 +96,14 @@ public abstract class RxInbound {
 
 
 
-	public RxInbound(String name, int capacity, RxWebConfiguration configuration) {
+	public RxInbound(String name, RxWebConfiguration configuration) {
 		super();
 		this.name = name + ".inbound";
 		need = Need.NONE;
-		networkBuffer = ByteBuffer.allocate(capacity);
+
 		this.Rx_isVerbose = configuration.isRxVerbose;
 
-		// set buffer so that first compact left it ready for writing
-		networkBuffer.position(0);
-		networkBuffer.limit(0);
+
 	}
 
 
@@ -122,19 +120,19 @@ public abstract class RxInbound {
 	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
 	 * @return A new buffer with a larger capacity.
 	 */
-	protected void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
+	public void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
 
 		/* allocate new buffer */
 		ByteBuffer extendedBuffer = ByteBuffer.allocate(
 				sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
 					networkBuffer.capacity() * 2);
-		
+
 		/* copy remaining content */
 		extendedBuffer.put(networkBuffer);
-		
+
 		/* replace */
 		networkBuffer = extendedBuffer;
-		
+
 		/* network buffer is now in READ mode */
 		networkBuffer.flip();
 	}
@@ -146,6 +144,20 @@ public abstract class RxInbound {
 	 */
 	public void Rx_bind(RxConnection connection) {
 		this.socketChannel = connection.getSocketChannel();
+
+
+	}
+
+
+	/**
+	 * 
+	 * @param capacity
+	 */
+	public void initializeNetworkBuffer(int capacity) {
+		// set buffer so that first compact left it ready for writing
+		networkBuffer = ByteBuffer.allocate(capacity);
+		networkBuffer.position(0);
+		networkBuffer.limit(0);
 	}
 
 
@@ -154,6 +166,10 @@ public abstract class RxInbound {
 	public Need getState() {
 		return need;
 	}
+
+
+
+
 
 
 	/**
@@ -173,7 +189,7 @@ public abstract class RxInbound {
 
 		// update flag
 		need = Need.RECEIVE;
-		
+
 
 		getConnection().pullInterestOps();
 
@@ -193,8 +209,7 @@ public abstract class RxInbound {
 
 			if(need==Need.RECEIVE) {
 
-				// no opinion on what to do next
-				need = Need.NONE;
+
 
 				/* buffer WRITE_MODE start of section */
 				// optimize inbound buffer free space
@@ -212,7 +227,14 @@ public abstract class RxInbound {
 				/* buffer WRITE_MODE end of section */
 
 				// trigger callback function with buffer ready for reading
-				onRxReceived();
+				if(nBytes > 0) { 
+
+					/* clear need, wait for upper layer ot decide if we need more recieve */
+					need = Need.NONE;
+
+					/* transmit to upper layer*/
+					onRxReceived(); 
+				}
 			}
 		}
 		catch(IOException exception) {

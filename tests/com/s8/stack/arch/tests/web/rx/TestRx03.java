@@ -18,15 +18,15 @@ public class TestRx03 {
 	public static void main(String[] args) throws Exception {
 
 		SiliconConfiguration appConfig = new SiliconConfiguration();
-		
+
 		SiliconEngine ng = new SiliconEngine(appConfig);
 		ng.start();
-		
+
 		RxWebConfiguration serverConfig = new RxWebConfiguration();
 		serverConfig.port = 1336;
 
 		RxServer server = new RxServer() {
-			
+
 			@Override
 			public SiliconEngine getSiliconEngine() {
 				return ng;
@@ -41,7 +41,7 @@ public class TestRx03 {
 			public RxConnection open(SocketChannel channel) throws IOException {
 
 				return new RxConnection_Impl01(this, channel, 
-						new RxInbound_Impl01("server", 1024, serverConfig) {
+						new RxInbound_Impl01("server", serverConfig) {
 					@Override
 					public void onRxReceived() {
 						int length = networkBuffer.remaining();
@@ -51,29 +51,16 @@ public class TestRx03 {
 						receive(); // always reading
 					}
 
-					@Override
-					public void onRxRemotelyClosed() {
-					}
-
-					@Override
-					public void onRxReceptionFailed(IOException exception) {
-					}
 					
+
 				}, 
-						new RxOutbound_Impl01("server", 1024, serverConfig) {
+						new RxOutbound_Impl01("server", serverConfig) {
 
-							@Override
-							public void onRxSending() {
-							}
+					@Override
+					public void onPreRxSending() {
+					}
 
-							@Override
-							public void onRxRemotelyClosed() {
-							}
 
-							@Override
-							public void onRxFailed(IOException exception) {
-							}
-					
 				});
 			}
 		};
@@ -96,7 +83,7 @@ public class TestRx03 {
 	private static class TestClient extends RxClient {
 
 		private final SiliconEngine ng;
-		
+
 		private Queue<byte[]> queue;
 
 		private byte[] bytes;
@@ -128,31 +115,25 @@ public class TestRx03 {
 		public RxWebConfiguration getWebConfiguration() {
 			return config;
 		}
-		
+
 		public @Override SiliconEngine getSiliconEngine() { return ng; }
 
 		@Override
 		public RxConnection open(Selector selector, SocketChannel channel) throws IOException {
 			return new RxConnection_Impl01(this, channel, 
-					new RxInbound_Impl01("client", 1024, config) {
-
-						@Override
-						public void onRxReceived() {
-						}
-
-						@Override
-						public void onRxRemotelyClosed() {
-						}
-
-						@Override
-						public void onRxReceptionFailed(IOException exception) {
-						}
-
-			}, 
-					new RxOutbound_Impl01("client", 1024, config) {
+					new RxInbound_Impl01("client", config) {
 
 				@Override
-				public void onRxSending() {
+				public void onRxReceived() {
+				}
+
+				
+
+			}, 
+					new RxOutbound_Impl01("client", config) {
+
+				@Override
+				public void onPreRxSending() {
 					if(bytes==null) {
 						pull();
 					}

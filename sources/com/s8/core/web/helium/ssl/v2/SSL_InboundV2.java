@@ -10,8 +10,8 @@ import javax.net.ssl.SSLException;
 import com.s8.core.web.helium.rx.NetworkBufferResizer;
 import com.s8.core.web.helium.rx.RxInbound;
 import com.s8.core.web.helium.ssl.v1.SSL_Connection;
-import com.s8.core.web.helium.ssl.v1.SSL_Outbound;
 import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
+import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound;
 
 
 /**

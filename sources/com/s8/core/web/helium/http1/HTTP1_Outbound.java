@@ -24,8 +24,8 @@ public class HTTP1_Outbound extends RxOutbound {
 	
 	private HTTP1_IOReactive composing;
 	
-	public HTTP1_Outbound(HTTP1_Connection connection, HTTP1_WebConfiguration configuration) {
-		super(NETWORK_OUTPUT_STARTING_CAPACITY, configuration);
+	public HTTP1_Outbound(String name, HTTP1_Connection connection, HTTP1_WebConfiguration configuration) {
+		super(name, configuration);
 		this.connection = connection;
 		queue = new ConcurrentLinkedDeque<>();
 	}
@@ -56,7 +56,7 @@ public class HTTP1_Outbound extends RxOutbound {
 	}
 
 	@Override
-	public void onRxSending() {
+	public void onPreRxSending() {
 		pull();
 		
 		boolean isSending = composing!=null;

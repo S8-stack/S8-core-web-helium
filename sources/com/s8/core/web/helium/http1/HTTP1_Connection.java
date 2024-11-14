@@ -23,8 +23,8 @@ public abstract class HTTP1_Connection extends RxConnection {
 	public HTTP1_Connection(SocketChannel socketChannel, HTTP1_Endpoint endpoint) throws IOException {
 		super(socketChannel);
 		this.endpoint = endpoint;
-		inbound = new HTTP1_Inbound(this, endpoint.getWebConfiguration());
-		outbound = new HTTP1_Outbound(this, endpoint.getWebConfiguration());
+		inbound = new HTTP1_Inbound("server", this, endpoint.getWebConfiguration());
+		outbound = new HTTP1_Outbound("server", this, endpoint.getWebConfiguration());
 	}
 
 	@Override
