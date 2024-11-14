@@ -5,11 +5,11 @@ import javax.net.ssl.SSLException;
 
 import com.s8.core.web.helium.utilities.HeUtilities;
 
-class Wrap implements SSL_Outbound.Operation {
+class Wrap implements Operation {
 
 	@Override
-	public void operate(SSL_Outbound out) {
-		
+	public boolean operate(SSL_Outbound out) {
+
 		/* <retrieve> */
 
 		/*
@@ -32,8 +32,8 @@ class Wrap implements SSL_Outbound.Operation {
 				System.out.println("\t\t * application buffer: " + HeUtilities.printInfo(out.applicationBuffer)); 
 				System.out.println("\t\t * network buffer: " + HeUtilities.printInfo(out.networkBuffer)); 
 			}
-			
-			
+
+
 			SSLEngineResult result = out.engine.wrap(out.applicationBuffer, out.networkBuffer);
 
 			if(out.SSL_isVerbose) { 
@@ -46,7 +46,7 @@ class Wrap implements SSL_Outbound.Operation {
 			if(!hasProducedBytes && result.bytesProduced() > 0) {
 				hasProducedBytes = true;
 			}
-			*/
+			 */
 
 			out.applicationBuffer.compact();
 
@@ -64,18 +64,25 @@ class Wrap implements SSL_Outbound.Operation {
 			case NEED_WRAP: 
 				switch(result.getStatus()) {
 
-				case OK: out.pushOp(new Wrap()); break;
+				case OK: 
+					out.pushOp(new Wrap());
+					return true; // continue
 
 				case BUFFER_UNDERFLOW: 
 					out.pushOp(new HandleApplicationBufferUnderflow()); 
 					out.pushOp(new Wrap()); 
-					break;
+					return true; // continue
 
-				case BUFFER_OVERFLOW: out.pushOp(new HandleNetworkBufferOverflow()); break;
+				case BUFFER_OVERFLOW: 
+					out.pushOp(new HandleNetworkBufferOverflow()); // will trigger send if necessary
+					return true; // continue
 
-				case CLOSED: out.pushOp(new Close()); break;
+				case CLOSED: 
+					out.pushOp(new Close());
+					return true; // continue
+
+				default: return true; // continue
 				}
-				break;
 
 
 			case NEED_UNWRAP:
@@ -87,23 +94,26 @@ class Wrap implements SSL_Outbound.Operation {
 				switch(result.getStatus()) {
 
 				/* before switching to unwrap, release what has been written */
-				case OK: out.inbound.ssl_unwrap(); break;
+				case OK: 
+					out.inbound.ssl_unwrap();
+					return true; // continue
 
 				case BUFFER_UNDERFLOW: 
 					out.pushOp(new HandleApplicationBufferUnderflow()); 
 					out.inbound.ssl_unwrap(); 
-					break;
+					return true; // continue
 
 				case BUFFER_OVERFLOW: 
 					out.pushOp(new HandleNetworkBufferOverflow()); 
 					out.inbound.ssl_unwrap(); 
-					break;
+					return true; // continue
 
 				case CLOSED: 
 					out.pushOp(new Close()); 
-					break;
+					return false; // continue
+
+				default: return true; // continue
 				}
-				break;
 
 
 				/*
@@ -119,24 +129,25 @@ class Wrap implements SSL_Outbound.Operation {
 				switch(result.getStatus()) {
 
 				case OK: 
-					if(result.bytesConsumed() > 0 || result.bytesProduced() > 0) {
-						out.pushOp(new RunDelegatedTask()); 	
-					}
-					break;
+					out.pushOp(new RunDelegatedTask()); 	
+					return true; // continue
 
 				case BUFFER_UNDERFLOW: 
 					out.pushOp(new HandleApplicationBufferUnderflow()); 
 					out.pushOp(new RunDelegatedTask());
-					break;
+					return true; // continue
 
 				case BUFFER_OVERFLOW: 
 					out.pushOp(new HandleNetworkBufferOverflow());
-					out.pushOp(new RunDelegatedTask()); break;
+					out.pushOp(new RunDelegatedTask());
+					return true; // continue
 
-				case CLOSED: out.pushOp(new Close()); break;
-				
+				case CLOSED: 
+					out.pushOp(new Close());
+					return false; // continue
+
+				default: return true; // continue
 				}
-				break;
 
 
 				/*
@@ -145,19 +156,33 @@ class Wrap implements SSL_Outbound.Operation {
 			case FINISHED: 
 
 				/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-				if(out.networkBuffer.position() > 0) { out.send(); }
-
-				switch(result.getStatus()) {
-
-				case OK: out.pushOp(new Wrap()); break;
-
-				case BUFFER_UNDERFLOW: out.pushOp(new HandleApplicationBufferUnderflow()); break;
-
-				case BUFFER_OVERFLOW: out.pushOp(new HandleNetworkBufferOverflow()); break;
-
-				case CLOSED: out.pushOp(new Close()); break;
+				if(out.networkBuffer.position() > 0) { 
+					return false;
 				}
-				break;
+				else {
+					switch(result.getStatus()) {
+
+					case OK: 
+						out.pushOp(new Wrap());
+						return true; // continue
+
+					case BUFFER_UNDERFLOW: 
+						out.pushOp(new HandleApplicationBufferUnderflow());
+						return true; // continue
+
+					case BUFFER_OVERFLOW: 
+						out.pushOp(new HandleNetworkBufferOverflow());
+						return true; // continue
+
+					case CLOSED: 
+						out.pushOp(new Close());
+						return false; // continue
+						
+					default: return true; // continue
+					}	
+				}
+
+				
 
 
 				// -> continue to next case
@@ -165,19 +190,36 @@ class Wrap implements SSL_Outbound.Operation {
 			case NOT_HANDSHAKING:
 
 				/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-				if(out.networkBuffer.position() > 0) { out.send(); }
-
-				switch(result.getStatus()) {
-
-				case OK: out.pump(); break;
-
-				case BUFFER_UNDERFLOW: out.pushOp(new HandleApplicationBufferUnderflow()); out.pump(); break;
-
-				case BUFFER_OVERFLOW: out.pushOp(new HandleNetworkBufferOverflow()); out.pump(); break;
-
-				case CLOSED: out.pushOp(new Close()); break;
+				if(out.networkBuffer.position() > 0) { 
+					return false;
 				}
-				break;
+				/* nothing more to wrap and send, so stop */
+				else if(out.applicationBuffer.position() == 0) { 
+					return false;
+				}
+				else {
+					switch(result.getStatus()) {
+
+					case OK: 
+						out.pushOp(new Wrap());
+						return true; // continue
+
+					case BUFFER_UNDERFLOW: 
+						out.pushOp(new HandleApplicationBufferUnderflow());
+						return true; // continue
+
+					case BUFFER_OVERFLOW: 
+						out.pushOp(new HandleNetworkBufferOverflow());
+						return true; // continue
+
+					case CLOSED: 
+						out.pushOp(new Close());
+						return false; // continue
+						
+					default: return true; // continue
+					}	
+				}
+
 
 			default : throw new SSLException("Unsupported case : "+result.getHandshakeStatus());
 
@@ -194,6 +236,7 @@ class Wrap implements SSL_Outbound.Operation {
 			}
 			// Everything went wrong, so try launching the closing procedure
 			out.pushOp(new Close());
+			return true;
 		}
 	}
 

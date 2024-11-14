@@ -1,9 +1,9 @@
 package com.s8.core.web.helium.ssl.v1.outbound;
 
-class Flush implements SSL_Outbound.Operation {
+class Flush implements Operation {
 
 	@Override
-	public void operate(SSL_Outbound out) {
+	public boolean operate(SSL_Outbound out) {
 
 
 		// if there is actually new bytes, send them
@@ -16,6 +16,8 @@ class Flush implements SSL_Outbound.Operation {
 			 */
 			out.send();
 		}
+		
+		return true;
 	}
 
 }

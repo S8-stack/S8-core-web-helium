@@ -5,10 +5,10 @@ package com.s8.core.web.helium.ssl.v1.outbound;
 /**
  * 
  */
-public class HandleApplicationBufferUnderflow implements SSL_Outbound.Operation {
+public class HandleApplicationBufferUnderflow implements Operation {
 
 	@Override
-	public void operate(SSL_Outbound out) {
+	public boolean operate(SSL_Outbound out) {
 		
 		/**
 		 *
@@ -23,6 +23,8 @@ public class HandleApplicationBufferUnderflow implements SSL_Outbound.Operation 
 			while(nc < sc) { nc*=2; }
 
 			out.increaseApplicationBufferCapacity(nc);
+			
+			
 		}
 		/* application buffer is likely to need more incoming data */
 		else if(out.applicationBuffer.position() < out.applicationBuffer.capacity() / 2) {
@@ -37,6 +39,8 @@ public class HandleApplicationBufferUnderflow implements SSL_Outbound.Operation 
 		out.pump();
 
 		out.pushOp(new Wrap());
+		
+		return true;
 	}
 
 }

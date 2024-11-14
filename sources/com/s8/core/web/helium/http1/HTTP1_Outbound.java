@@ -82,6 +82,9 @@ public class HTTP1_Outbound extends RxOutbound {
 	}
 
 	
+	@Override
+	public void onPostRxSending(int nBytesWritten) throws IOException {
+	}
 
 
 	@Override
@@ -93,5 +96,6 @@ public class HTTP1_Outbound extends RxOutbound {
 	public void onRxFailed(IOException exception) {
 		connection.close();	
 	}
+
 
 }

@@ -6,10 +6,10 @@ import javax.net.ssl.SSLException;
 /**
  * 
  */
-class Close implements SSL_Inbound.Operation {
+class Close implements Operation {
 
 	@Override
-	public void operate(SSL_Inbound in) {
+	public boolean operate(SSL_Inbound in) {
 		try {
 			in.engine.closeInbound();
 		} 
@@ -23,6 +23,8 @@ class Close implements SSL_Inbound.Operation {
 		in.engine.closeOutbound();
 
 		in.getConnection().close();
+		
+		return false;
 	}
 
 }

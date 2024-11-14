@@ -8,10 +8,10 @@ import com.s8.core.web.helium.utilities.HeUtilities;
 /**
  * 
  */
-class Unwrap implements SSL_Inbound.Operation {
+class Unwrap implements Operation {
 
 	@Override
-	public void operate(SSL_Inbound in) {
+	public boolean operate(SSL_Inbound in) {
 
 		try {
 
@@ -37,11 +37,11 @@ class Unwrap implements SSL_Inbound.Operation {
 			}
 
 			// drain as soon as bytes available
-			/*
+
 			if(result.bytesProduced() > 0) {
-				in.pushOp(new Drain());
+				in.drain();
 			}
-			*/
+
 
 
 			switch(result.getHandshakeStatus()) {
@@ -56,38 +56,38 @@ class Unwrap implements SSL_Inbound.Operation {
 				switch(result.getStatus()) {
 
 				/* everything is fine, so process normally -> one more run */
-				case OK: in.pushOp(new Unwrap()); break;
+				case OK: in.pushOp(new Unwrap()); return true;
 
 				/* stop the flow, because need to pump more data */
-				case BUFFER_UNDERFLOW: in.pushOp(new HandleNetworkBufferUnderflow()); break;
+				case BUFFER_UNDERFLOW: in.pushOp(new HandleNetworkBufferUnderflow()); return true;
 
 				/* continue wrapping, because no additional I/O call involved */
-				case BUFFER_OVERFLOW: in.pushOp(new HandleApplicationBufferOverflow()); break;
+				case BUFFER_OVERFLOW: in.pushOp(new HandleApplicationBufferOverflow()); return true;
 
 				/* this side has been closed, so initiate closing */
-				case CLOSED: in.pushOp(new Close()); break;
+				case CLOSED: in.pushOp(new Close()); return true;
 
+				default: return true;
 				}
-				break;
 
 			case NEED_WRAP: 
 
 				switch(result.getStatus()) {
 
 				/* launch outbound side, do not add a loop */
-				case OK: in.outbound.ssl_wrap(); break;
+				case OK: in.outbound.ssl_wrap(); return true;
 
 				/* stop the flow, because need to pump more data */
-				case BUFFER_UNDERFLOW: in.pushOp(new HandleNetworkBufferUnderflow()); in.outbound.ssl_wrap(); break;
+				case BUFFER_UNDERFLOW: in.pushOp(new HandleNetworkBufferUnderflow()); in.outbound.ssl_wrap(); return true;
 
 				/* continue wrapping, because no additional I/O call involved */
-				case BUFFER_OVERFLOW: in.pushOp(new HandleApplicationBufferOverflow()); in.outbound.ssl_wrap(); break;
+				case BUFFER_OVERFLOW: in.pushOp(new HandleApplicationBufferOverflow()); in.outbound.ssl_wrap(); return true;
 
 				/* this side has been closed, so initiate closing */
-				case CLOSED: in.pushOp(new Close()); break;
+				case CLOSED: in.pushOp(new Close()); return true;
 
+				default : return true;
 				}
-				break;
 
 
 				/*
@@ -99,24 +99,24 @@ class Unwrap implements SSL_Inbound.Operation {
 
 				/* handle delegated task */
 				case OK: 
-					in.pushOp(new RunDelegatedTask()); break;
+					in.pushOp(new RunDelegatedTask()); return true;
 
-				/* stop the flow, because need to pump more data */
+					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					in.pushOp(new RunDelegatedTask()); 
-					in.pushOp(new HandleNetworkBufferUnderflow()); break;
+					in.pushOp(new HandleNetworkBufferUnderflow()); return true;
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					in.pushOp(new RunDelegatedTask()); 
-					in.pushOp(new HandleApplicationBufferOverflow()); break;
+					in.pushOp(new HandleApplicationBufferOverflow()); return true;
 
-				/* this side has been closed, so initiate closing */
+					/* this side has been closed, so initiate closing */
 				case CLOSED: 
-					in.pushOp(new Close()); break;
+					in.pushOp(new Close()); return true;
 
+				default : return true;
 				}
-				break;
 
 
 				/*
@@ -127,24 +127,25 @@ class Unwrap implements SSL_Inbound.Operation {
 				switch(result.getStatus()) {
 
 				/* handle delegated task */
-				case OK: in.pushOp(new Unwrap()); break;
+				case OK: in.pushOp(new Unwrap()); return true;
 
 				/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
-					in.pushOp(new HandleNetworkBufferUnderflow()); 
-					in.pushOp(new Unwrap()); break;
+					in.pushOp(new HandleNetworkBufferUnderflow());
+					return true;
 
-				/* continue wrapping, because no additional I/O call involved */
+					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
-					in.pushOp(new HandleApplicationBufferOverflow()); 
-					in.pushOp(new Unwrap()); break;
+					in.pushOp(new HandleApplicationBufferOverflow());
+					return true;
 
-				/* this side has been closed, so initiate closing */
+					/* this side has been closed, so initiate closing */
 				case CLOSED: 
-					in.pushOp(new Close()); break;
+					in.pushOp(new Close());
+					return true;
 
+				default : return true;
 				}
-				break;
 
 				// -> continue to next case
 
@@ -153,22 +154,27 @@ class Unwrap implements SSL_Inbound.Operation {
 				switch(result.getStatus()) {
 
 				/* handle delegated task */
-				case OK: in.pushOp(new Drain()); break;
+				case OK: 
+					in.pushOp(new Unwrap());
+					return true;
 
-				/* stop the flow, because need to pump more data */
+					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
-					in.pushOp(new HandleNetworkBufferUnderflow()); in.pushOp(new Drain()); break;
+					in.pushOp(new HandleNetworkBufferUnderflow()); 
+					return true;
 
-				/* continue wrapping, because no additional I/O call involved */
+					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
-					in.pushOp(new HandleApplicationBufferOverflow()); break;
+					in.pushOp(new HandleApplicationBufferOverflow()); 
+					return true;
 
-				/* this side has been closed, so initiate closing */
+					/* this side has been closed, so initiate closing */
 				case CLOSED: 
-					in.pushOp(new Close()); break;
+					in.pushOp(new Close());
+					return true;
 
+				default : return true;
 				}
-				break;
 
 			default : throw new SSLException("Unsupported case : "+result.getHandshakeStatus());
 
@@ -189,6 +195,8 @@ class Unwrap implements SSL_Inbound.Operation {
 				System.out.println("Try casting to plain text: "+new String(bytes));	
 
 			}
+
+			return true;
 		}
 	}
 

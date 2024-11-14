@@ -4,11 +4,11 @@ package com.s8.core.web.helium.ssl.v1.inbound;
 /**
  * 
  */
-class HandleApplicationBufferOverflow implements SSL_Inbound.Operation {
+class HandleApplicationBufferOverflow implements Operation {
 
 
 	@Override
-	public void operate(SSL_Inbound in) {
+	public boolean operate(SSL_Inbound in) {
 
 		/**
 		 * Could attempt to drain the destination (application) buffer of any already obtained data, 
@@ -36,7 +36,8 @@ class HandleApplicationBufferOverflow implements SSL_Inbound.Operation {
 		}
 		/* application buffer is likely to be filled, so drain */
 		else if(in.applicationBuffer.position() > in.applicationBuffer.capacity()) {
-			in.pushOp(new Drain());
+			
+			/* should be drained by next unwrap call */
 		}
 		/* ... try to increase application buffer capacity, because no other apparent reasons */
 		else {
@@ -48,6 +49,7 @@ class HandleApplicationBufferOverflow implements SSL_Inbound.Operation {
 
 		/* since no I/O involved, we can immediately retry */
 		in.pushOp(new Unwrap());
+		return true; // continue
 	}
 
 }

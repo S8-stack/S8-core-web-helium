@@ -49,7 +49,7 @@ public abstract class RxOutbound {
 	 */
 	private Need need;
 
-	private int lastWriteBytecount;
+	private int nBytesWritten;
 
 
 	private final boolean rx_isVerbose;
@@ -137,7 +137,7 @@ public abstract class RxOutbound {
 	 * 
 	 * @throws IOException 
 	 */
-	public abstract void onPostRxSending() throws IOException;
+	public abstract void onPostRxSending(int nBytesWritten) throws IOException;
 
 
 	/**
@@ -178,7 +178,7 @@ public abstract class RxOutbound {
 
 
 				// write operation
-				lastWriteBytecount = socketChannel.write(networkBuffer);
+				nBytesWritten = socketChannel.write(networkBuffer);
 
 				/* 
 				 * Everything might not have been written, 
@@ -186,7 +186,7 @@ public abstract class RxOutbound {
 				networkBuffer.compact();
 				/* buffer READ_MODE end of section */
 				
-				onPostRxSending();
+				onPostRxSending(nBytesWritten);
 
 
 				/* network buffer MUST be cleared to declare that we don't need anymore SEND */
@@ -195,7 +195,7 @@ public abstract class RxOutbound {
 					need = Need.NONE;
 				}
 				/* remote closing */
-				else if(lastWriteBytecount==-1) {
+				else if(nBytesWritten==-1) {
 
 					// reset flag
 					need = Need.SHUT_DOWN;
@@ -252,7 +252,7 @@ public abstract class RxOutbound {
 
 
 	public int getLastWriteBytecount() {
-		return lastWriteBytecount;
+		return nBytesWritten;
 	}
 
 

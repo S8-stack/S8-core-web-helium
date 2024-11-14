@@ -38,7 +38,7 @@ public abstract class RxOutbound_Impl01 extends RxOutbound {
 	}
 
 	@Override
-	public void onPostRxSending() throws IOException {
+	public void onPostRxSending(int nBytesWritten) throws IOException {
 	}
 
 }

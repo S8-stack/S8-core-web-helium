@@ -7,10 +7,10 @@ import com.s8.core.arch.silicon.async.MthProfile;
 /**
  * 
  */
-class RunDelegatedTask implements SSL_Inbound.Operation {
+class RunDelegatedTask implements Operation {
 
 	@Override
-	public void operate(SSL_Inbound in) {
+	public boolean operate(SSL_Inbound in) {
 		Runnable runnable = in.engine.getDelegatedTask();
 		if(runnable != null) { 
 
@@ -18,6 +18,8 @@ class RunDelegatedTask implements SSL_Inbound.Operation {
 
 			/* stop here, will be continued by task runner*/
 		}
+		
+		return true;
 	}
 
 

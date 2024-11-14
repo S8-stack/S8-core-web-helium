@@ -57,11 +57,11 @@ public abstract class SSL_Inbound extends RxInbound {
 
 	boolean SSL_isVerbose;
 
-	
+
 	/** operations */
 	private final Deque<Operation> operations;
 
-	
+
 
 	/**
 	 * 
@@ -74,8 +74,8 @@ public abstract class SSL_Inbound extends RxInbound {
 
 		/* <buffers> */
 
-		
-		
+
+
 		operations = new LinkedList<>();
 	}
 
@@ -95,7 +95,7 @@ public abstract class SSL_Inbound extends RxInbound {
 	 */
 	void increaseApplicationBufferCapacity(int capacity) {
 		if(capacity > applicationBuffer.capacity()) {
-			
+
 			/* allocate new buffer */
 			ByteBuffer extendedBuffer = ByteBuffer.allocate(capacity);
 
@@ -144,16 +144,16 @@ public abstract class SSL_Inbound extends RxInbound {
 		this.engine = connection.ssl_getEngine();
 
 		this.outbound = connection.getOutbound();
-		
+
 		initializeNetworkBuffer(engine.getSession().getPacketBufferSize());
 		initializeApplicationBuffer(engine.getSession().getApplicationBufferSize());
-		
+
 	}
 
 
-	
+
 	private void initializeApplicationBuffer(int capacity) {
-		
+
 		/* 
 		 * Left in read mode outside retrieve state. So initialize with nothing to read
 		 */
@@ -169,12 +169,21 @@ public abstract class SSL_Inbound extends RxInbound {
 		new Process(new Unwrapping()).launch();
 	}
 	 */
-	
-	@FunctionalInterface
-	public static interface Operation {
-		
-		public abstract void operate(SSL_Inbound in);
-		
+
+
+	/**
+	 * ALWAYS drain to supply the upper layer with app data
+	 * as EARLY as possible
+	 */
+	public void drain() {
+
+		/* Trigger SSL_onReceived
+				we ignore the fact that receiver can potentially read more bytes */
+		SSL_onReceived(applicationBuffer);
+
+		/* /!\ since endPoint.onReceived read ALL data, nothing left, so clear
+			application input buffer -> READ */
+		applicationBuffer.clear();	
 	}
 
 
@@ -225,25 +234,29 @@ public abstract class SSL_Inbound extends RxInbound {
 			Operation operation = null;
 			int count = 0;
 			while(isLooping()) {
-				
+
 				synchronized (lock) { operation = operations.pollFirst(); }
-				
+
 				operation.operate(this);
+
+				count++;
+				System.out.println("[SSL_Inbound] " + name + " unwrap loop count : " + count);
+			}
 			
-			count++;
-			System.out.println("[SSL_Inbound] " + name + " unwrap loop count : " + count);
+			if(SSL_isVerbose) {
+				System.out.println("[SSL_Inbound] "+name+" Exiting run...");
 			}
 		}
 
 	}
-	
-	
+
+
 	void pushOpFirst(Operation operation) {
 		synchronized (lock) { operations.addFirst(operation); }
 		boot();
 	}
-	
-	
+
+
 	/**
 	 * 
 	 * @param operation
@@ -252,7 +265,7 @@ public abstract class SSL_Inbound extends RxInbound {
 		synchronized (lock) { operations.addLast(operation); }
 		boot();
 	}
-	
+
 
 
 

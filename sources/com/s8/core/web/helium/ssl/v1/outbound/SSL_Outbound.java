@@ -45,7 +45,6 @@ public abstract class SSL_Outbound extends RxOutbound {
 	private final Object lock = new Object();
 
 
-	private int nWraps = 0;
 
 	private boolean isWrapping = false;
 
@@ -67,6 +66,8 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 	/** operations */
 	private final Deque<Operation> operations;
+
+	private boolean isSendRequired = false;
 
 
 	/**
@@ -122,10 +123,13 @@ public abstract class SSL_Outbound extends RxOutbound {
 	public void onPreRxSending() throws IOException {
 		ssl_wrap();
 	}
-	
+
 	@Override
-	public void onPostRxSending() throws IOException {
+	public void onPostRxSending(int nBytesWritten) throws IOException {
 		ssl_wrap();
+		
+		// flush network output if any
+		if(networkBuffer.position() > 0) { send(); }
 	}
 
 	@Override
@@ -152,7 +156,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 		this.engine = connection.ssl_getEngine();
 		this.inbound = connection.getInbound();
-		
+
 
 		/* <buffers> */
 
@@ -162,7 +166,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 		initializeNetworkBuffer(engine.getSession().getPacketBufferSize());
 		initializeApplicationBuffer(engine.getSession().getApplicationBufferSize());
-		
+
 	}
 
 
@@ -186,16 +190,6 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 
-	@FunctionalInterface
-	public static interface Operation {
-
-		public abstract void operate(SSL_Outbound out);
-
-	}
-
-
-
-
 	private boolean isLoopEnterable() {
 		synchronized (lock) {
 			if(isWrapping) {
@@ -210,19 +204,18 @@ public abstract class SSL_Outbound extends RxOutbound {
 	}
 
 	/**
-	 * 
+	 * Exiting synchronized section
 	 * @return
 	 */
 	private boolean isLooping() {
 		synchronized (lock) {
-			if(nWraps > 0) {
-				nWraps--;
-				return true;
-			}
-			else {
-				/* exiting synchronized section */
+			if(isSendRequired || operations.size() == 0) {
+				isSendRequired = false; // clear flag
 				isWrapping = false;
 				return false;
+			}
+			else {
+				return true;
 			}
 		}
 	}
@@ -239,21 +232,24 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 */
 	private void boot() {
 
-		/* add one more loop turn */
-		synchronized (lock) { nWraps++; }
-
 		/* entering critical section */ 
 		if(!getConnection().isClosed && isLoopEnterable()) {
 
-			SSL_Outbound.Operation operation;
+			Operation operation;
+			boolean isContinuing;
 
 			while(isLooping()) {
 
 				synchronized (lock) { operation = operations.pollFirst(); }
 
-				operation.operate(this);
-
+				isContinuing = operation.operate(this);
+				
+				synchronized (lock) { this.isSendRequired = !isContinuing; }
 			}
+		}
+		
+		if(SSL_isVerbose) {
+			System.out.println("[SSL_Outbound] "+name+" Exiting run...");
 		}
 	}
 

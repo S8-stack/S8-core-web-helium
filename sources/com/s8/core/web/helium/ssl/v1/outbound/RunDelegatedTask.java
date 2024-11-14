@@ -8,25 +8,25 @@ import com.s8.core.arch.silicon.async.MthProfile;
 /**
  * 
  */
-class RunDelegatedTask implements SSL_Outbound.Operation {
+class RunDelegatedTask implements Operation {
 
-	
+
 	@Override
-	public void operate(SSL_Outbound out) {
-		
-			Runnable runnable = out.engine.getDelegatedTask();
-			if(runnable != null) { 
+	public boolean operate(SSL_Outbound out) {
 
-				runDelegated(out, runnable);
+		Runnable runnable = out.engine.getDelegatedTask();
+		if(runnable != null) { 
 
-				/* stop here, will be continued by task runner*/
-			}
-			else {
-				/* continue */
-				out.pushOp(new Wrap());
-			}	
-		
+			runDelegated(out, runnable);
 
+			/* stop here, will be continued by task runner*/
+		}
+		else {
+			/* continue */
+			out.pushOp(new Wrap());
+		}	
+
+		return true; // continue
 	}
 
 
@@ -68,6 +68,6 @@ class RunDelegatedTask implements SSL_Outbound.Operation {
 			}
 		});
 	}
-	
-	
+
+
 }

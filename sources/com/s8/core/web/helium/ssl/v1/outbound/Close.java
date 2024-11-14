@@ -4,10 +4,10 @@ import javax.net.ssl.SSLEngineResult;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLEngineResult.Status;
 
-class Close implements SSL_Outbound.Operation {
+class Close implements Operation {
 
 	@Override
-	public void operate(SSL_Outbound out) {
+	public boolean operate(SSL_Outbound out) {
 
 		/*
 		 * Closing this side of the engine
@@ -47,10 +47,15 @@ class Close implements SSL_Outbound.Operation {
 			 * All data obtained from the wrap() method should be sent to the peer.
 			 */
 			out.pushOp(new Flush());
+			
+			
+			
 		}
 		catch (SSLException e) {
 			e.printStackTrace();
 		}
+		
+		return false;
 	}
 
 }
