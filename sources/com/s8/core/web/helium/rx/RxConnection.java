@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 
@@ -26,7 +25,7 @@ public abstract class RxConnection {
 	 * true: is used
 	 * false : can be acquired
 	 */
-	private AtomicBoolean isBusy;
+	private final Object lock = new Object();
 
 
 	/**
@@ -89,7 +88,6 @@ public abstract class RxConnection {
 	public RxConnection(SocketChannel socketChannel) {
 		super();
 		this.socketChannel = socketChannel;
-		this.isBusy = new AtomicBoolean(false);
 	}
 
 
@@ -220,12 +218,15 @@ public abstract class RxConnection {
 	 * Update interest set
 	 */
 	public void pullInterestOps() {
+		
+		
+		
 
 		/**
 		 * Concurrency is handled at this point: if the connection is busy, we skid this
 		 * step (knowing that it will be call back soon). Note that, if it is never callback
 		 */
-		if(isBusy.compareAndSet(false, true)) {
+	synchronized (lock) {
 
 			if(socketChannel.isOpen()) {
 
@@ -281,11 +282,7 @@ public abstract class RxConnection {
 				 */
 				state = State.CLOSING;
 			}
-
-			isBusy.set(false);
-		}
-		//else {
-		/* in case we cannot access the connection, we presume that interest has not changed */
+		} /* </synchronized> */
 
 
 	}
@@ -300,7 +297,7 @@ public abstract class RxConnection {
 		 * step (knowing that it will be call back soon). Note that, in most case, only one operation at a time on
 		 * a single connection (HTTP2 is per stream, multiplexed and continuous flow).
 		 */
-		if(isBusy.compareAndSet(false, true)) {
+		synchronized(lock) {
 
 			try {
 				// Duplicate security line
@@ -388,8 +385,8 @@ public abstract class RxConnection {
 				state = State.CLOSING;
 			}
 
-			isBusy.set(false);
-		}
+			
+		} /* </synchronized> */
 
 	}
 

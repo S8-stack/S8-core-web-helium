@@ -4,10 +4,15 @@ package com.s8.core.web.helium.ssl.v1.inbound;
 /**
  * 
  */
-class HandleNetworkBufferUnderflow implements Operation {
+class HandleNetworkBufferUnderflow{
 
 
-	@Override
+	
+	/**
+	 * 
+	 * @param in
+	 * @return true if receive is required
+	 */
 	public boolean operate(SSL_Inbound in) {
 		
 		/**
@@ -24,30 +29,22 @@ class HandleNetworkBufferUnderflow implements Operation {
 
 			in.increaseNetworkBufferCapacity(nc);
 			
-			in.pushOp(new Unwrap());
-			return true;
+			return false;
 		}
 		/* network buffer is likely to need more inbound data */
 		else if(in.networkBuffer.remaining() < in.networkBuffer.capacity() / 2) {
 			/* nothing to do */
 			
 			/* in any case, need to load more inbound data in networkBuffer */
-			in.receive();
-			
-			return false;
+			return true;
 		}
 		else {
 			/* new capacity first guess */
 			int nc = 2 * in.networkBuffer.capacity();
 			in.increaseNetworkBufferCapacity(nc);
 			
-			in.pushOp(new Unwrap());
-			return true;
-		}
-
-	
+			return false;
+		}	
 	}
-
-	
 
 }

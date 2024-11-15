@@ -8,7 +8,7 @@ import com.s8.core.web.helium.utilities.HeUtilities;
 class Wrap implements Operation {
 
 	@Override
-	public boolean operate(SSL_Outbound out) {
+	public Mode operate(SSL_Outbound out) {
 
 		/* <retrieve> */
 
@@ -40,6 +40,7 @@ class Wrap implements Operation {
 				System.out.println("[SSL_Outbound] " + out.name + " :"); 
 				System.out.println("\tunwrap result: " + result); 
 				System.out.println("\tnetwork buffer: " + HeUtilities.printInfo(out.networkBuffer)); 
+				System.out.println("\n"); 
 			}
 
 			/*
@@ -49,6 +50,10 @@ class Wrap implements Operation {
 			 */
 
 			out.applicationBuffer.compact();
+
+			if(result.bytesConsumed() > 0) {
+				System.out.println("[SSL_Outbound] " + out.name + " : begin transfer"); 
+			}
 
 
 			/* <handshake-status> 
@@ -66,53 +71,61 @@ class Wrap implements Operation {
 
 				case OK: 
 					out.pushOp(new Wrap());
-					return true; // continue
+					return Mode.CONTINUE; // continue
 
 				case BUFFER_UNDERFLOW: 
 					out.pushOp(new HandleApplicationBufferUnderflow()); 
 					out.pushOp(new Wrap()); 
-					return true; // continue
+					return Mode.CONTINUE; // continue
 
 				case BUFFER_OVERFLOW: 
 					out.pushOp(new HandleNetworkBufferOverflow()); // will trigger send if necessary
-					return true; // continue
+					return Mode.CONTINUE; // continue
 
 				case CLOSED: 
 					out.pushOp(new Close());
-					return true; // continue
+					return Mode.CONTINUE; // continue
 
-				default: return true; // continue
+				default: return Mode.CONTINUE; // continue
 				}
 
 
 			case NEED_UNWRAP:
 			case NEED_UNWRAP_AGAIN: 
 
-				/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-				if(out.networkBuffer.position() > 0) { out.send(); }
-
 				switch(result.getStatus()) {
 
 				/* before switching to unwrap, release what has been written */
 				case OK: 
 					out.inbound.ssl_unwrap();
-					return true; // continue
+					out.pushOp(new Wrap()); 
+
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
+
 
 				case BUFFER_UNDERFLOW: 
+					out.inbound.ssl_unwrap();
 					out.pushOp(new HandleApplicationBufferUnderflow()); 
-					out.inbound.ssl_unwrap(); 
-					return true; // continue
+
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */ }
 
 				case BUFFER_OVERFLOW: 
-					out.pushOp(new HandleNetworkBufferOverflow()); 
-					out.inbound.ssl_unwrap(); 
-					return true; // continue
+					out.inbound.ssl_unwrap();
+					out.pushOp(new HandleNetworkBufferOverflow());
+
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
 				case CLOSED: 
 					out.pushOp(new Close()); 
-					return false; // continue
+					return Mode.STOP; // continue
 
-				default: return true; // continue
+				default: return Mode.CONTINUE; // continue
 				}
 
 
@@ -129,24 +142,28 @@ class Wrap implements Operation {
 				switch(result.getStatus()) {
 
 				case OK: 
-					out.pushOp(new RunDelegatedTask()); 	
-					return true; // continue
+					out.pushOp(new RunDelegatedTask());
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
 				case BUFFER_UNDERFLOW: 
 					out.pushOp(new HandleApplicationBufferUnderflow()); 
-					out.pushOp(new RunDelegatedTask());
-					return true; // continue
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
 				case BUFFER_OVERFLOW: 
 					out.pushOp(new HandleNetworkBufferOverflow());
-					out.pushOp(new RunDelegatedTask());
-					return true; // continue
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
 				case CLOSED: 
 					out.pushOp(new Close());
-					return false; // continue
+					return Mode.STOP; // continue
 
-				default: return true; // continue
+				default: return Mode.CONTINUE; // continue
 				}
 
 
@@ -155,70 +172,65 @@ class Wrap implements Operation {
 				 */
 			case FINISHED: 
 
-				/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-				if(out.networkBuffer.position() > 0) { 
-					return false;
-				}
-				else {
-					switch(result.getStatus()) {
+				switch(result.getStatus()) {
 
-					case OK: 
-						out.pushOp(new Wrap());
-						return true; // continue
+				case OK: 
+					out.pushOp(new Wrap());
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
-					case BUFFER_UNDERFLOW: 
-						out.pushOp(new HandleApplicationBufferUnderflow());
-						return true; // continue
+				case BUFFER_UNDERFLOW: 
+					out.pushOp(new HandleApplicationBufferUnderflow());
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
-					case BUFFER_OVERFLOW: 
-						out.pushOp(new HandleNetworkBufferOverflow());
-						return true; // continue
+				case BUFFER_OVERFLOW: 
+					out.pushOp(new HandleNetworkBufferOverflow());
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
-					case CLOSED: 
-						out.pushOp(new Close());
-						return false; // continue
-						
-					default: return true; // continue
-					}	
-				}
+				case CLOSED: 
+					out.pushOp(new Close());
+					return Mode.STOP; // continue
 
-				
-
+				default: return Mode.CONTINUE; // continue
+				}	
 
 				// -> continue to next case
 
 			case NOT_HANDSHAKING:
 
-				/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-				if(out.networkBuffer.position() > 0) { 
-					return false;
-				}
-				/* nothing more to wrap and send, so stop */
-				else if(out.applicationBuffer.position() == 0) { 
-					return false;
-				}
-				else {
-					switch(result.getStatus()) {
+				switch(result.getStatus()) {
 
-					case OK: 
-						out.pushOp(new Wrap());
-						return true; // continue
+				case OK: 
+					if(out.applicationBuffer.position() > 0) { 
+						out.pushOp(new Wrap());	
+					}
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
-					case BUFFER_UNDERFLOW: 
-						out.pushOp(new HandleApplicationBufferUnderflow());
-						return true; // continue
+				case BUFFER_UNDERFLOW: 
+					out.pushOp(new HandleApplicationBufferUnderflow());
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
-					case BUFFER_OVERFLOW: 
-						out.pushOp(new HandleNetworkBufferOverflow());
-						return true; // continue
+				case BUFFER_OVERFLOW: 
+					out.pushOp(new HandleNetworkBufferOverflow());
+					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
+					if(out.networkBuffer.position() > 0) {  return Mode.STOP_AND_SEND; }
+					else { return Mode.CONTINUE; /* continue */  }
 
-					case CLOSED: 
-						out.pushOp(new Close());
-						return false; // continue
-						
-					default: return true; // continue
-					}	
-				}
+				case CLOSED: 
+					out.pushOp(new Close());
+					return Mode.STOP; // continue
+
+				default: return Mode.CONTINUE; // continue
+				}	
 
 
 			default : throw new SSLException("Unsupported case : "+result.getHandshakeStatus());
@@ -236,7 +248,7 @@ class Wrap implements Operation {
 			}
 			// Everything went wrong, so try launching the closing procedure
 			out.pushOp(new Close());
-			return true;
+			return Mode.CONTINUE;
 		}
 	}
 

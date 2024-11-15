@@ -13,7 +13,7 @@ interface Operation {
 	 * 
 	 * @param out
 	 */
-	public abstract boolean operate(SSL_Outbound out);
+	public abstract Mode operate(SSL_Outbound out);
 
 	
 	

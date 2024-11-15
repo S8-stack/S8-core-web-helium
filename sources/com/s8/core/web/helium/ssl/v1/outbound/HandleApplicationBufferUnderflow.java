@@ -5,10 +5,10 @@ package com.s8.core.web.helium.ssl.v1.outbound;
 /**
  * 
  */
-public class HandleApplicationBufferUnderflow implements Operation {
+class HandleApplicationBufferUnderflow implements Operation {
 
 	@Override
-	public boolean operate(SSL_Outbound out) {
+	public Mode operate(SSL_Outbound out) {
 		
 		/**
 		 *
@@ -40,7 +40,7 @@ public class HandleApplicationBufferUnderflow implements Operation {
 
 		out.pushOp(new Wrap());
 		
-		return true;
+		return Mode.CONTINUE;
 	}
 
 }

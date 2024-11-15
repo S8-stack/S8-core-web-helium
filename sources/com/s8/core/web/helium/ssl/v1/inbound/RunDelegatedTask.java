@@ -7,20 +7,9 @@ import com.s8.core.arch.silicon.async.MthProfile;
 /**
  * 
  */
-class RunDelegatedTask implements Operation {
+class RunDelegatedTask {
 
-	@Override
-	public boolean operate(SSL_Inbound in) {
-		Runnable runnable = in.engine.getDelegatedTask();
-		if(runnable != null) { 
 
-			runDelegated(in, runnable);
-
-			/* stop here, will be continued by task runner*/
-		}
-		
-		return true;
-	}
 
 
 

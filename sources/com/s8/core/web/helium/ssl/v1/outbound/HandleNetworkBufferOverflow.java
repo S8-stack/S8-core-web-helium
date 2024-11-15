@@ -2,10 +2,10 @@ package com.s8.core.web.helium.ssl.v1.outbound;
 
 
 
-public class HandleNetworkBufferOverflow implements Operation {
+class HandleNetworkBufferOverflow implements Operation {
 
 	@Override
-	public boolean operate(SSL_Outbound out) {
+	public Mode operate(SSL_Outbound out) {
 		/**
 		 * Could attempt to drain the destination (application) buffer of any already obtained data, 
 		 * but we'll just increase it to the size needed.
@@ -32,11 +32,12 @@ public class HandleNetworkBufferOverflow implements Operation {
 
 			out.pushOp(new Wrap());
 			
-			return true; // continue
+			return Mode.CONTINUE; // continue
 		}
 		/* application buffer is likely to be filled, so drain */
 		else if(out.networkBuffer.position() > out.networkBuffer.capacity()) {
-			return false; // stop looping here, will trigger send
+			
+			return Mode.STOP_AND_SEND; // stop looping here, will trigger send
 		}
 		/* ... try to increase application buffer capacity, because no other apparent reasons */
 		else {
@@ -45,9 +46,8 @@ public class HandleNetworkBufferOverflow implements Operation {
 
 			out.increaseApplicationBufferCapacity(nc);
 
-			out.pushOp(new Wrap());
-			
-			return true; // continue
+			out.pushOp(new Wrap());		
+			return Mode.CONTINUE; // continue
 		}
 
 	}

@@ -12,21 +12,21 @@ class RunDelegatedTask implements Operation {
 
 
 	@Override
-	public boolean operate(SSL_Outbound out) {
+	public Mode operate(SSL_Outbound out) {
 
 		Runnable runnable = out.engine.getDelegatedTask();
 		if(runnable != null) { 
 
 			runDelegated(out, runnable);
-
+			return Mode.STOP; // continue
 			/* stop here, will be continued by task runner*/
 		}
 		else {
 			/* continue */
 			out.pushOp(new Wrap());
+			return Mode.CONTINUE;
 		}	
 
-		return true; // continue
 	}
 
 

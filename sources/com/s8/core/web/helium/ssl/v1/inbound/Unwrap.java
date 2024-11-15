@@ -11,7 +11,7 @@ import com.s8.core.web.helium.utilities.HeUtilities;
 class Unwrap implements Operation {
 
 	@Override
-	public boolean operate(SSL_Inbound in) {
+	public Operation operate(SSL_Inbound in) {
 
 		try {
 
@@ -34,6 +34,7 @@ class Unwrap implements Operation {
 				System.out.println("[SSL_Inbound] " + in.name + " :"); 
 				System.out.println("\tunwrap result: " + result); 
 				System.out.println("\tnetwork buffer: " + HeUtilities.printInfo(in.networkBuffer)); 
+				System.out.println("\n");
 			}
 
 			// drain as soon as bytes available
@@ -56,37 +57,40 @@ class Unwrap implements Operation {
 				switch(result.getStatus()) {
 
 				/* everything is fine, so process normally -> one more run */
-				case OK: in.pushOp(new Unwrap()); return true;
+				case OK: return new Unwrap();
 
 				/* stop the flow, because need to pump more data */
-				case BUFFER_UNDERFLOW: in.pushOp(new HandleNetworkBufferUnderflow()); return true;
+				case BUFFER_UNDERFLOW: return new HandleNetworkBufferUnderflow();
 
 				/* continue wrapping, because no additional I/O call involved */
-				case BUFFER_OVERFLOW: in.pushOp(new HandleApplicationBufferOverflow()); return true;
+				case BUFFER_OVERFLOW: return new HandleApplicationBufferOverflow();
 
 				/* this side has been closed, so initiate closing */
-				case CLOSED: in.pushOp(new Close()); return true;
+				case CLOSED: return new Close();
 
-				default: return true;
+				default: throw new SSLException("Unsupported SSLResult status");
 				}
 
 			case NEED_WRAP: 
 
+				/* launch outbound side, do not add a loop */
+				in.outbound.ssl_wrap(); 
+				
 				switch(result.getStatus()) {
 
 				/* launch outbound side, do not add a loop */
-				case OK: in.outbound.ssl_wrap(); return true;
+				case OK: return null;
 
 				/* stop the flow, because need to pump more data */
-				case BUFFER_UNDERFLOW: in.pushOp(new HandleNetworkBufferUnderflow()); in.outbound.ssl_wrap(); return true;
+				case BUFFER_UNDERFLOW: return new HandleNetworkBufferUnderflow();
 
 				/* continue wrapping, because no additional I/O call involved */
-				case BUFFER_OVERFLOW: in.pushOp(new HandleApplicationBufferOverflow()); in.outbound.ssl_wrap(); return true;
+				case BUFFER_OVERFLOW: return new HandleApplicationBufferOverflow();
 
 				/* this side has been closed, so initiate closing */
-				case CLOSED: in.pushOp(new Close()); return true;
+				case CLOSED: return new Close();
 
-				default : return true;
+				default: throw new SSLException("Unsupported SSLResult status");
 				}
 
 
@@ -98,24 +102,21 @@ class Unwrap implements Operation {
 				switch(result.getStatus()) {
 
 				/* handle delegated task */
-				case OK: 
-					in.pushOp(new RunDelegatedTask()); return true;
+				case OK: return new RunDelegatedTask();
 
 					/* stop the flow, because need to pump more data */
-				case BUFFER_UNDERFLOW: 
-					in.pushOp(new RunDelegatedTask()); 
-					in.pushOp(new HandleNetworkBufferUnderflow()); return true;
+				case BUFFER_UNDERFLOW: return new HandleNetworkBufferUnderflow();
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					in.pushOp(new RunDelegatedTask()); 
-					in.pushOp(new HandleApplicationBufferOverflow()); return true;
+					in.pushOp(new HandleApplicationBufferOverflow()); return Mode.CONTINUE;
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
-					in.pushOp(new Close()); return true;
+					in.pushOp(new Close()); return Mode.CONTINUE;
 
-				default : return true;
+				default : return Mode.CONTINUE;
 				}
 
 
@@ -127,24 +128,24 @@ class Unwrap implements Operation {
 				switch(result.getStatus()) {
 
 				/* handle delegated task */
-				case OK: in.pushOp(new Unwrap()); return true;
+				case OK: in.pushOp(new Unwrap()); return Mode.CONTINUE;
 
 				/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					in.pushOp(new HandleNetworkBufferUnderflow());
-					return true;
+					return Mode.CONTINUE;
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					in.pushOp(new HandleApplicationBufferOverflow());
-					return true;
+					return Mode.CONTINUE;
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
 					in.pushOp(new Close());
-					return true;
+					return Mode.CONTINUE;
 
-				default : return true;
+				default : return Mode.CONTINUE;
 				}
 
 				// -> continue to next case
@@ -156,24 +157,24 @@ class Unwrap implements Operation {
 				/* handle delegated task */
 				case OK: 
 					in.pushOp(new Unwrap());
-					return true;
+					return Mode.CONTINUE;
 
 					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					in.pushOp(new HandleNetworkBufferUnderflow()); 
-					return true;
+					return Mode.CONTINUE;
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					in.pushOp(new HandleApplicationBufferOverflow()); 
-					return true;
+					return Mode.CONTINUE;
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
 					in.pushOp(new Close());
-					return true;
+					return Mode.CONTINUE;
 
-				default : return true;
+				default : return Mode.CONTINUE;
 				}
 
 			default : throw new SSLException("Unsupported case : "+result.getHandshakeStatus());
@@ -196,7 +197,7 @@ class Unwrap implements Operation {
 
 			}
 
-			return true;
+			return Mode.CONTINUE;
 		}
 	}
 

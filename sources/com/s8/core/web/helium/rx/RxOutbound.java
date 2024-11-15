@@ -26,9 +26,11 @@ public abstract class RxOutbound {
 
 		NONE, SEND, SHUT_DOWN;
 	}
-	
-	
+
+
 	public final String name;
+
+	private final Object lock = new Object();
 
 
 	/**
@@ -59,7 +61,7 @@ public abstract class RxOutbound {
 		super();
 
 		this.name = name  + ".outbound";
-		
+
 		this.need = Need.NONE;
 
 		this.rx_isVerbose = configuration.isRxVerbose;
@@ -67,17 +69,17 @@ public abstract class RxOutbound {
 
 	public abstract RxConnection getConnection();
 
-	
+
 	/**
 	 * 
 	 * @param connection
 	 */
 	public void Rx_bind(RxConnection connection) {
 		this.socketChannel = getConnection().getSocketChannel();
-		
+
 	}
-	
-	
+
+
 	public void initializeNetworkBuffer(int capacity) {
 		networkBuffer = ByteBuffer.allocate(capacity);
 	}
@@ -92,18 +94,18 @@ public abstract class RxOutbound {
 	 * @return A new buffer with a larger capacity.
 	 */
 	public void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
-		
+
 		if(sessionProposedCapacity > networkBuffer.capacity()) {
-			
+
 			/* allocate new buffer */
 			ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity);
-			
+
 			/* put networkBuffer in READ mode */
 			networkBuffer.flip();
 
 			/* copy remaining content */
 			extendedBuffer.put(networkBuffer);
-			
+
 			/* replace (networkBuffer is in WRITE mode) */
 			networkBuffer = extendedBuffer;	
 		}		
@@ -129,7 +131,7 @@ public abstract class RxOutbound {
 	 * @throws IOException 
 	 */
 	public abstract void onPreRxSending() throws IOException;
-	
+
 	/**
 	 * <p>
 	 * Callback function when write to socket channel has occured
@@ -160,66 +162,63 @@ public abstract class RxOutbound {
 	 * @return false if write operation did NOT result into an outbound termination, true otherwise
 	 */
 	public Need write() {
+		synchronized (lock) {
+			
+			try {
+				if(need==Need.SEND) {
+
+					// write as much as possible (I/O operation is always expensive)
+					onPreRxSending();
+
+					/* buffer READ_MODE start of section */
+					// flip to prepare passing on socket channel
+					networkBuffer.flip();
 
 
-		try {
+					// write operation
+					nBytesWritten = socketChannel.write(networkBuffer);
 
-			if(need==Need.SEND) {
+					/* 
+					 * Everything might not have been written, 
+					 * so compact (and switch to direct write mode) */
+					networkBuffer.compact();
+					/* buffer READ_MODE end of section */
 
-				
-
-
-				// write as much as possible (I/O operation is always expensive)
-				onPreRxSending();
-
-				/* buffer READ_MODE start of section */
-				// flip to prepare passing on socket channel
-				networkBuffer.flip();
+					onPostRxSending(nBytesWritten);
 
 
-				// write operation
-				nBytesWritten = socketChannel.write(networkBuffer);
+					/* network buffer MUST be cleared to declare that we don't need anymore SEND */
+					if(networkBuffer.position() == 0) {
+						//
+						need = Need.NONE;
+					}
+					/* remote closing */
+					else if(nBytesWritten==-1) {
 
-				/* 
-				 * Everything might not have been written, 
-				 * so compact (and switch to direct write mode) */
-				networkBuffer.compact();
-				/* buffer READ_MODE end of section */
-				
-				onPostRxSending(nBytesWritten);
+						// reset flag
+						need = Need.SHUT_DOWN;
 
-
-				/* network buffer MUST be cleared to declare that we don't need anymore SEND */
-				if(networkBuffer.position() == 0) {
-					//
-					need = Need.NONE;
+						onRxRemotelyClosed();
+					}
 				}
-				/* remote closing */
-				else if(nBytesWritten==-1) {
+			} 
+			catch (IOException exception) {
 
-					// reset flag
-					need = Need.SHUT_DOWN;
-
-					onRxRemotelyClosed();
+				// print exception
+				if(rx_isVerbose) {
+					System.out.println("[RxOutbound] write encounters an exception:");
+					System.out.println("\t"+exception.getMessage());
+					System.out.println("\t--> SHUT_DOWN required");				
 				}
+
+				// reset flag
+				need = Need.SHUT_DOWN;
+
+				onRxFailed(exception);
 			}
-		} 
-		catch (IOException exception) {
+			return need;
 
-			// print exception
-			if(rx_isVerbose) {
-				System.out.println("[RxOutbound] write encounters an exception:");
-				System.out.println("\t"+exception.getMessage());
-				System.out.println("\t--> SHUT_DOWN required");				
-			}
-
-			// reset flag
-			need = Need.SHUT_DOWN;
-
-			onRxFailed(exception);
-		}
-
-		return need;
+		} /* </synchronized> */
 	}
 
 	public void send() {
@@ -234,19 +233,19 @@ public abstract class RxOutbound {
 
 		// update flag
 		need = Need.SEND;
-		
-		
+
+
 		getConnection().pullInterestOps();
 
 		// notify selector
 		getConnection().wakeup();
 	}
-	
-	
+
+
 
 
 	public Need getState() {
-		return need;
+		synchronized (lock) { return need; } 
 	}
 
 

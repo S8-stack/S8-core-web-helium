@@ -31,6 +31,7 @@ public abstract class RxInbound {
 	public final String name;
 
 
+	private final Object lock = new Object();
 
 	/**
 	 * /**
@@ -122,19 +123,21 @@ public abstract class RxInbound {
 	 */
 	public void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
 
-		/* allocate new buffer */
-		ByteBuffer extendedBuffer = ByteBuffer.allocate(
-				sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
-					networkBuffer.capacity() * 2);
+		synchronized (lock) {
+			/* allocate new buffer */
+			ByteBuffer extendedBuffer = ByteBuffer.allocate(
+					sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
+						networkBuffer.capacity() * 2);
 
-		/* copy remaining content */
-		extendedBuffer.put(networkBuffer);
+			/* copy remaining content */
+			extendedBuffer.put(networkBuffer);
 
-		/* replace */
-		networkBuffer = extendedBuffer;
+			/* replace */
+			networkBuffer = extendedBuffer;
 
-		/* network buffer is now in READ mode */
-		networkBuffer.flip();
+			/* network buffer is now in READ mode */
+			networkBuffer.flip();	
+		}
 	}
 
 
@@ -154,17 +157,19 @@ public abstract class RxInbound {
 	 * @param capacity
 	 */
 	public void initializeNetworkBuffer(int capacity) {
-		// set buffer so that first compact left it ready for writing
-		networkBuffer = ByteBuffer.allocate(capacity);
-		networkBuffer.position(0);
-		networkBuffer.limit(0);
+		synchronized (lock) {
+			// set buffer so that first compact left it ready for writing
+			networkBuffer = ByteBuffer.allocate(capacity);
+			networkBuffer.position(0);
+			networkBuffer.limit(0);	
+		}
 	}
 
 
 
 
 	public Need getState() {
-		return need;
+		synchronized (lock) { return need; }
 	}
 
 
@@ -188,8 +193,7 @@ public abstract class RxInbound {
 		</DEBUG> */
 
 		// update flag
-		need = Need.RECEIVE;
-
+		synchronized (lock) { need = Need.RECEIVE; }
 
 		getConnection().pullInterestOps();
 
@@ -204,52 +208,55 @@ public abstract class RxInbound {
 	 * @throws IOException 
 	 */
 	public Need read() throws IOException {
-
-		try {
-
-			if(need==Need.RECEIVE) {
+		synchronized (lock) { /* <sync:low-contention> */
 
 
+			try {
 
-				/* buffer WRITE_MODE start of section */
-				// optimize inbound buffer free space
-				networkBuffer.compact();
+				if(need==Need.RECEIVE) {
 
-				// read
-				nBytes = socketChannel.read(networkBuffer);
 
-				if(nBytes==-1) {
-					onRxRemotelyClosed();
-				}
 
-				// flip
-				networkBuffer.flip();
-				/* buffer WRITE_MODE end of section */
+					/* buffer WRITE_MODE start of section */
+					// optimize inbound buffer free space
+					networkBuffer.compact();
 
-				// trigger callback function with buffer ready for reading
-				if(nBytes > 0) { 
+					// read
+					nBytes = socketChannel.read(networkBuffer);
 
-					/* clear need, wait for upper layer ot decide if we need more recieve */
-					need = Need.NONE;
+					if(nBytes==-1) {
+						onRxRemotelyClosed();
+					}
 
-					/* transmit to upper layer*/
-					onRxReceived(); 
+					// flip
+					networkBuffer.flip();
+					/* buffer WRITE_MODE end of section */
+
+					// trigger callback function with buffer ready for reading
+					if(nBytes > 0) { 
+
+						/* clear need, wait for upper layer ot decide if we need more recieve */
+						need = Need.NONE;
+
+						/* transmit to upper layer*/
+						onRxReceived(); 
+					}
 				}
 			}
-		}
-		catch(IOException exception) {
+			catch(IOException exception) {
 
-			if(Rx_isVerbose) {
-				System.out.println("[RxInbound] read encounters an exception: "+exception.getMessage());
-				System.out.println("\t --> require SHUT_DOWN");
+				if(Rx_isVerbose) {
+					System.out.println("[RxInbound] read encounters an exception: "+exception.getMessage());
+					System.out.println("\t --> require SHUT_DOWN");
+				}
+
+				onRxReceptionFailed(exception);
+
+				need = Need.SHUT_DOWN;
 			}
 
-			onRxReceptionFailed(exception);
-
-			need = Need.SHUT_DOWN;
-		}
-
-		return need;
+			return need;
+		} /* </synchronized> */
 	};
 
 

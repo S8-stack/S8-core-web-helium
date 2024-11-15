@@ -1,23 +1,17 @@
 package com.s8.core.web.helium.ssl.v1.outbound;
 
-public enum Mode {
+enum Mode {
 
-	CONTINUE {
-		@Override
-		public boolean isValid(SSL_Outbound out) {
-			return true;
-		}
-	},
 	
 	
-	REQUIRE_NETWORK_BUFFER_SENT {
-		@Override
-		public boolean isValid(SSL_Outbound out) {
-			return out.networkBuffer.position() == 0;
-		}
-	};
+	CONTINUE,
+	
+	
+	STOP,
+	
+	
+	STOP_AND_SEND;
 	
 	
 	
-	public abstract boolean isValid(SSL_Outbound out);
 }
