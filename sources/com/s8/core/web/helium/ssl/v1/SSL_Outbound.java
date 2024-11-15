@@ -63,11 +63,13 @@ public abstract class SSL_Outbound extends RxOutbound {
 	private final Object lock = new Object();
 
 	
-	private final static int WRAP = 0x00;
+	private final static int WRAP = 0x01;
 	
-	private final static int STOP = 0x01;
-	private final static int UNWRAP = 0x02;
-	private final static int SEND = 0x04;
+	private final static int STOP = 0x02;
+	private final static int UNWRAP = 0x04;
+	private final static int SEND = 0x08;
+	
+	private final static int RECEIVE = 0x10;
 	
 	/**
 	 * 
@@ -158,16 +160,20 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 */
 	void ssl_launchWrap() {
 		
-		int nextOp = WRAP;
+		int extOps = 0x00;
 		
 		synchronized (lock) {
 			
-		
-
-			/**
-			 * 
-			 */
-			while(nextOp == WRAP) { nextOp = wrap(); }
+			int ops = WRAP;
+			
+			while((ops & WRAP) == WRAP) {
+				
+				/* perform operation */
+				ops = wrap();
+				
+				/* accumulate externale operations */
+				extOps |= ops;
+			}
 			
 			if(SSL_isVerbose) {
 				System.out.println("[SSL_Outbound] "+name+" Exiting run...");
@@ -175,9 +181,11 @@ public abstract class SSL_Outbound extends RxOutbound {
 		}
 		
 		/* avoid dead lock by performaing following up operations outside critical section */
-		if((nextOp & SEND) == SEND) { send(); }
+		if((extOps & SEND) == SEND) { send(); }
 		
-		if((nextOp & UNWRAP) == UNWRAP) { inbound.ssl_launchUnwrap(); }
+		if((extOps & UNWRAP) == UNWRAP) { inbound.ssl_launchUnwrap(); }
+		
+		if((extOps & RECEIVE) == RECEIVE) { inbound.receive(); }
 	}
 
 
@@ -211,23 +219,17 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 		try {
 
-			/* Actually wrapping... */
-			applicationBuffer.flip();
-
 			if(SSL_isVerbose) { 
 				System.out.println("\t\t * application buffer: " + HeUtilities.printInfo(applicationBuffer)); 
 				System.out.println("\t\t * network buffer: " + HeUtilities.printInfo(networkBuffer)); 
 			}
 
+			
+			/* Actually wrapping... */
+			applicationBuffer.flip();
+
 
 			SSLEngineResult result = engine.wrap(applicationBuffer, networkBuffer);
-
-			if(SSL_isVerbose) { 
-				System.out.println("[SSL_Outbound] " + name + " :"); 
-				System.out.println("\tunwrap result: " + result); 
-				System.out.println("\tnetwork buffer: " + HeUtilities.printInfo(networkBuffer)); 
-				System.out.println("\n"); 
-			}
 
 			/*
 			if(!hasProducedBytes && result.bytesProduced() > 0) {
@@ -236,6 +238,16 @@ public abstract class SSL_Outbound extends RxOutbound {
 			 */
 
 			applicationBuffer.compact();
+			
+
+			if(SSL_isVerbose) { 
+				System.out.println("[SSL_Outbound] " + name + " :"); 
+				System.out.println("\tunwrap result: " + result); 
+				System.out.println("\tnetwork buffer: " + HeUtilities.printInfo(networkBuffer));
+				System.out.println("\tapplication buffer: " + HeUtilities.printInfo(applicationBuffer));
+				System.out.println("\n"); 
+			}
+
 
 			if(result.bytesConsumed() > 0) {
 				System.out.println("[SSL_Outbound] " + name + " : begin transfer"); 
@@ -356,20 +368,30 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 				case OK: 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
-					else { return WRAP; } /* continue */
+					return (networkBuffer.position() > 0 ? SEND : 0) |
+							/* there are actually APP bytes to wrap and send (and networkBuffer is empty) */
+							(applicationBuffer.position() > 0 ? WRAP : 0) |
+							/* in any case wake-up inbound side to notify FINISHED */
+							UNWRAP;
+					
 
 				case BUFFER_UNDERFLOW: 
 					handleApplicationBufferUnderflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
-					else { return WRAP; } /* continue */ 
+					return (networkBuffer.position() > 0 ? SEND : 0) |
+							/* there are actually APP bytes to wrap and send (and networkBuffer is empty) */
+							(applicationBuffer.position() > 0 ? WRAP : 0) |
+							/* in any case wake-up inbound side to notify FINISHED */
+							UNWRAP;
 
 				case BUFFER_OVERFLOW: 
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(isSendingRequired || networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
-					else { return WRAP; } /* continue */ 
+					return ((networkBuffer.position() > 0 | isSendingRequired) ? SEND : 0) |
+							/* there are actually APP bytes to wrap and send (and networkBuffer is empty) */
+							(applicationBuffer.position() > 0 ? WRAP : 0) |
+							/* in any case wake-up inbound side to notify FINISHED */
+							UNWRAP;
 
 				case CLOSED: close(); return STOP; /* stop */
 
@@ -382,23 +404,29 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 				case OK: 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
-					/* continue is there is data left in application buffer (WRITE MODE) to be sent */  
-					else { return applicationBuffer.position() > 0 ? WRAP : STOP; }
+					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
+					/* there are actually APP bytes to wrap and send (and networkBuffer is empty) */
+					else if(applicationBuffer.position() > 0) { return WRAP; } /* STOP_AND_SEND */
+					/* everything has been consumed (APP) and transmitted (NET), so try to relaunch receive */
+					else { return  STOP | RECEIVE; }
 
 				case BUFFER_UNDERFLOW: 
 					handleApplicationBufferUnderflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
-					/* continue is there is data left in application buffer (WRITE MODE) to be sent */  
-					else { return applicationBuffer.position() > 0 ? WRAP : STOP; }
+					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
+					/* there are actually APP bytes to wrap and send (and networkBuffer is empty) */
+					else if(applicationBuffer.position() > 0) { return WRAP; } /* STOP_AND_SEND */
+					/* everything has been consumed (APP) and transmitted (NET), so try to relaunch receive */
+					else { return  STOP | RECEIVE; }
 
 				case BUFFER_OVERFLOW: 
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(isSendingRequired || networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
-					/* continue is there is data left in application buffer (WRITE MODE) to be sent */  
-					else { return applicationBuffer.position() > 0 ? WRAP : STOP; }
+					if(isSendingRequired || networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
+					/* there are actually APP bytes to wrap and send (and networkBuffer is empty) */
+					else if(applicationBuffer.position() > 0) { return WRAP; } /* STOP_AND_SEND */
+					/* everything has been consumed (APP) and transmitted (NET), so try to relaunch receive */
+					else { return  STOP | RECEIVE; }
 
 				case CLOSED: close(); return STOP; /* stop */
 

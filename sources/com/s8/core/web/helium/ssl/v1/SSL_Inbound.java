@@ -52,11 +52,12 @@ public abstract class SSL_Inbound extends RxInbound {
 
 	private final Object lock = new Object();
 
-	private final static int UNWRAP = 0x00;
+	private final static int UNWRAP = 0x01;
 
-	private final static int STOP = 0x01;
-	private final static int WRAP = 0x02;
-	private final static int RECEIVE = 0x04;
+	private final static int STOP = 0x02;
+	private final static int WRAP = 0x04;
+	private final static int RECEIVE = 0x08;
+	//private final static int SEND = 0x08;
 
 
 
@@ -163,11 +164,21 @@ public abstract class SSL_Inbound extends RxInbound {
 	 */
 	public void ssl_launchUnwrap() {
 		
-		int nextOp = UNWRAP;
+		int extOps = UNWRAP;
+		
 		
 		synchronized (lock) {
+			
+			int ops = UNWRAP;
 
-			while(nextOp == UNWRAP) { nextOp = unwrap(); }
+			while((ops & UNWRAP) == UNWRAP) { 
+				
+				/* unwrap */
+				ops = unwrap();
+				
+				/* accumulate externale operations */
+				extOps |= ops;
+			}
 
 			if(SSL_isVerbose) {
 				System.out.println("[SSL_Inbound] "+name+" Exiting run...");
@@ -175,9 +186,9 @@ public abstract class SSL_Inbound extends RxInbound {
 		}
 
 		/* avoid dead lock by performaing following up operations outside critical section */
-		if((nextOp & RECEIVE) == RECEIVE) { receive(); }
+		if((extOps & RECEIVE) == RECEIVE) { receive(); }
 
-		if((nextOp & WRAP) == WRAP) { outbound.ssl_launchWrap(); }
+		if((extOps & WRAP) == WRAP) { outbound.ssl_launchWrap(); }
 	}
 
 
@@ -206,7 +217,8 @@ public abstract class SSL_Inbound extends RxInbound {
 			if(SSL_isVerbose) { 
 				System.out.println("[SSL_Inbound] " + name + " :"); 
 				System.out.println("\tunwrap result: " + result); 
-				System.out.println("\tnetwork buffer: " + HeUtilities.printInfo(networkBuffer)); 
+				System.out.println("\t"+name+" network buffer: " + HeUtilities.printInfo(networkBuffer)); 
+				System.out.println("\t"+name+" application buffer: " + HeUtilities.printInfo(applicationBuffer)); 
 				System.out.println("\n");
 			}
 
@@ -319,7 +331,7 @@ public abstract class SSL_Inbound extends RxInbound {
 				switch(result.getStatus()) {
 
 				case OK: 
-					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP | WRAP : STOP | RECEIVE | WRAP; /* continue is something is left to read from network*/
 
 					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
@@ -328,14 +340,14 @@ public abstract class SSL_Inbound extends RxInbound {
 						return STOP | RECEIVE; /* stop to wait for entword data */ 
 					}
 					else {
-						return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
+						return networkBuffer.hasRemaining() ? UNWRAP | WRAP : STOP | RECEIVE | WRAP; /* continue is something is left to read from network*/
 					}
 
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					handleApplicationBufferOverflow();
-					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP | WRAP : STOP | RECEIVE | WRAP; /* continue is something is left to read from network*/
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
@@ -351,7 +363,7 @@ public abstract class SSL_Inbound extends RxInbound {
 				switch(result.getStatus()) {
 
 				case OK: 
-					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP : STOP | RECEIVE; /* continue is something is left to read from network*/
 
 					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
@@ -360,14 +372,14 @@ public abstract class SSL_Inbound extends RxInbound {
 						return STOP | RECEIVE; /* stop to wait for entword data */ 
 					}
 					else {
-						return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
+						return networkBuffer.hasRemaining() ? UNWRAP : STOP | RECEIVE; /* continue is something is left to read from network*/
 					}
 
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					handleApplicationBufferOverflow();
-					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP : STOP | RECEIVE; /* continue is something is left to read from network*/
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
