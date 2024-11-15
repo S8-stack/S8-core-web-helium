@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl.v1.inbound;
+package com.s8.core.web.helium.ssl.v1;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -9,9 +9,6 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
 
 import com.s8.core.web.helium.rx.RxInbound;
-import com.s8.core.web.helium.ssl.v1.SSL_Connection;
-import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
-import com.s8.core.web.helium.ssl.v1.outbound.SSL_Outbound;
 import com.s8.core.web.helium.utilities.HeUtilities;
 
 
@@ -80,36 +77,9 @@ public abstract class SSL_Inbound extends RxInbound {
 
 
 
-	/**
-	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
-	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
-	 * with capacity twice the size of the initial one.
-	 *
-	 * @param buffer - the buffer to be enlarged.
-	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
-	 * @return A new buffer with a larger capacity.
-	 */
-	void increaseApplicationBufferCapacity(int capacity) {
-		if(capacity > applicationBuffer.capacity()) {
-
-			/* allocate new buffer */
-			ByteBuffer extendedBuffer = ByteBuffer.allocate(capacity);
-
-			/* copy remaining content */
-			extendedBuffer.put(applicationBuffer);
-
-			/* replace */
-			applicationBuffer = extendedBuffer;
-
-			/* network buffer is now in READ mode */
-			applicationBuffer.flip();		
-		}
-	}
-
-
 	@Override
 	public void onRxReceived() throws IOException {
-		ssl_unwrap();
+		ssl_launchUnwrap();
 	}
 
 	@Override
@@ -171,7 +141,7 @@ public abstract class SSL_Inbound extends RxInbound {
 	 * ALWAYS drain to supply the upper layer with app data
 	 * as EARLY as possible
 	 */
-	public void drain() {
+	private void drain() {
 
 		/* Trigger SSL_onReceived
 				we ignore the fact that receiver can potentially read more bytes */
@@ -186,13 +156,13 @@ public abstract class SSL_Inbound extends RxInbound {
 	/**
 	 * 
 	 */
-	public void ssl_unwrap() {
+	public void ssl_launchUnwrap() {
 		synchronized (lock) {
 			
 			boolean isContinued = true;
 			
 			while(isContinued) {
-				isContinued = handleUnwrap();
+				isContinued = unwrap();
 			}
 			if(SSL_isVerbose) {
 				System.out.println("[SSL_Inbound] "+name+" Exiting run...");
@@ -202,10 +172,10 @@ public abstract class SSL_Inbound extends RxInbound {
 
 
 
-	/** utilities */
+	/* <main> */
 
 
-	private boolean handleUnwrap() {
+	private boolean unwrap() {
 
 		try {
 
@@ -272,7 +242,7 @@ public abstract class SSL_Inbound extends RxInbound {
 			case NEED_WRAP: 
 
 				/* launch outbound side, do not add a loop */
-				outbound.ssl_wrap(); 
+				outbound.ssl_launchWrap(); 
 
 				switch(result.getStatus()) {
 
@@ -421,6 +391,12 @@ public abstract class SSL_Inbound extends RxInbound {
 			return true;
 		}
 	}
+	
+
+	/* </main> */
+	
+
+	/* <handles> */
 
 
 	/**
@@ -538,4 +514,38 @@ public abstract class SSL_Inbound extends RxInbound {
 		getConnection().close();
 	}
 
+
+	/* </handles> */
+	
+	/* <utilities> */
+
+
+	/**
+	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
+	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
+	 * with capacity twice the size of the initial one.
+	 *
+	 * @param buffer - the buffer to be enlarged.
+	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
+	 * @return A new buffer with a larger capacity.
+	 */
+	void increaseApplicationBufferCapacity(int capacity) {
+		if(capacity > applicationBuffer.capacity()) {
+
+			/* allocate new buffer */
+			ByteBuffer extendedBuffer = ByteBuffer.allocate(capacity);
+
+			/* copy remaining content */
+			extendedBuffer.put(applicationBuffer);
+
+			/* replace */
+			applicationBuffer = extendedBuffer;
+
+			/* network buffer is now in READ mode */
+			applicationBuffer.flip();		
+		}
+	}
+
+
+	/* </utilities> */
 }

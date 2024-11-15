@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl.v1.outbound;
+package com.s8.core.web.helium.ssl.v1;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,9 +10,6 @@ import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLSession;
 
 import com.s8.core.web.helium.rx.RxOutbound;
-import com.s8.core.web.helium.ssl.v1.SSL_Connection;
-import com.s8.core.web.helium.ssl.v1.SSL_WebConfiguration;
-import com.s8.core.web.helium.ssl.v1.inbound.SSL_Inbound;
 import com.s8.core.web.helium.utilities.HeUtilities;
 
 
@@ -81,41 +78,14 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 
-	/**
-	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
-	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
-	 * with capacity twice the size of the initial one.
-	 *
-	 * @param buffer - the buffer to be enlarged.
-	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
-	 * @return A new buffer with a larger capacity.
-	 */
-	public void increaseApplicationBufferCapacity(int capacity) {
-		if(capacity > applicationBuffer.capacity()) {
-			/* allocate new buffer */
-			ByteBuffer extendedBuffer = ByteBuffer.allocate(capacity);
-
-			/* switch application buffer to READ mode */
-			applicationBuffer.flip();
-
-			/* copy remaining content */
-			extendedBuffer.put(applicationBuffer);
-
-			/* replace (application buffer is in WRITE mode) */
-			applicationBuffer = extendedBuffer;
-		}
-	}
-
-
-
 	@Override
 	public void onPreRxSending() throws IOException {
-		ssl_wrap();
+		ssl_launchWrap();
 	}
 
 	@Override
 	public void onPostRxSending(int nBytesWritten) throws IOException {
-		ssl_wrap();
+		ssl_launchWrap();
 	}
 
 	@Override
@@ -174,13 +144,16 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 
-	public void ssl_wrap() {
+	/**
+	 * Key entry point
+	 */
+	void ssl_launchWrap() {
 		synchronized (lock) {
 
 			boolean isContinued = true;
 
 			while(isContinued) {
-				isContinued = handleWrap();
+				isContinued = wrap();
 			}
 			if(SSL_isVerbose) {
 				System.out.println("[SSL_Outbound] "+name+" Exiting run...");
@@ -201,10 +174,9 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 
-	/* <handles> */
+	/* <main> */
 
-
-	private boolean handleWrap() {
+	private boolean wrap() {
 		/* <retrieve> */
 
 		/*
@@ -293,7 +265,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 				/* before switching to unwrap, release what has been written */
 				case OK: 
-					inbound.ssl_unwrap();
+					inbound.ssl_launchUnwrap();
 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
 					if(networkBuffer.position() > 0) {  send(); }
@@ -301,7 +273,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 				case BUFFER_UNDERFLOW: 
-					inbound.ssl_unwrap();
+					inbound.ssl_launchUnwrap();
 					handleApplicationBufferUnderflow(); 
 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
@@ -309,7 +281,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 					return false; /* in any case, stop here */
 
 				case BUFFER_OVERFLOW: 
-					inbound.ssl_unwrap();
+					inbound.ssl_launchUnwrap();
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
@@ -317,7 +289,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 					return false; /* in any case, stop here */
 
 				case CLOSED: 
-					inbound.ssl_unwrap();
+					inbound.ssl_launchUnwrap();
 					close(); return false; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());
@@ -433,6 +405,11 @@ public abstract class SSL_Outbound extends RxOutbound {
 			return false;
 		}
 	}
+
+	/* </main> */
+
+	
+	/* <handles> */
 
 
 
@@ -590,5 +567,36 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 	/* </handles> */
 
+	
+	/* <utilities> */
+
+
+	/**
+	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
+	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
+	 * with capacity twice the size of the initial one.
+	 *
+	 * @param buffer - the buffer to be enlarged.
+	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
+	 * @return A new buffer with a larger capacity.
+	 */
+	public void increaseApplicationBufferCapacity(int capacity) {
+		if(capacity > applicationBuffer.capacity()) {
+			/* allocate new buffer */
+			ByteBuffer extendedBuffer = ByteBuffer.allocate(capacity);
+
+			/* switch application buffer to READ mode */
+			applicationBuffer.flip();
+
+			/* copy remaining content */
+			extendedBuffer.put(applicationBuffer);
+
+			/* replace (application buffer is in WRITE mode) */
+			applicationBuffer = extendedBuffer;
+		}
+	}
+
+
+	/* </utilities> */
 
 }
