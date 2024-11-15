@@ -2,7 +2,9 @@ package com.s8.core.web.helium.rx;
 
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 
@@ -15,16 +17,16 @@ public abstract class RxConnection {
 		NOT_INITIATED, WAITING_FOR_CONNECTION_COMPLETION, CONNECTED, CLOSING, CLOSED;
 	}
 
-
+	
 	public static class Options {
-
+		
 	}
 
 	/**
 	 * true: is used
 	 * false : can be acquired
 	 */
-	private final Object lock = new Object();
+	private AtomicBoolean isBusy;
 
 
 	/**
@@ -46,7 +48,7 @@ public abstract class RxConnection {
 	/**
 	 * Keep ref of selector for waking-up
 	 */
-	//Selector selector;
+	Selector selector;
 
 	/**
 	 * selection key
@@ -87,6 +89,7 @@ public abstract class RxConnection {
 	public RxConnection(SocketChannel socketChannel) {
 		super();
 		this.socketChannel = socketChannel;
+		this.isBusy = new AtomicBoolean(false);
 	}
 
 
@@ -109,7 +112,7 @@ public abstract class RxConnection {
 			System.out.println("[RxWebEnpoint] endpoint has just been created");
 		}
 
-		//this.selector = getEndpoint().getSelector();
+		this.selector = getEndpoint().getSelector();
 
 		// setup channel as NON-BLOCKING (always)
 		socketChannel.configureBlocking(false);
@@ -125,9 +128,7 @@ public abstract class RxConnection {
 		}
 
 		// no selection so far, but build key
-		//this.key = socketChannel.register(selector, 0);
-		this.key = getEndpoint().buildKey(socketChannel);
-		
+		this.key = socketChannel.register(selector, 0);
 
 		// attach this connection to the key
 		key.attach(this);
@@ -139,7 +140,7 @@ public abstract class RxConnection {
 		// this.isClosingRequested = new AtomicBoolean(false);
 		// this.isConnectingRequested = new AtomicBoolean(false);
 		/* </flags> */
-
+		
 
 		/**
 		 * bind bounds
@@ -147,20 +148,20 @@ public abstract class RxConnection {
 		getInbound().Rx_bind(this);
 		getOutbound().Rx_bind(this);	
 	}
-
-
+	
+	
 
 	/**
 	 * must be called right after initialize
 	 */
 	/*
 	public void bind() {
-
+		
 		// sub-bind
 		getInbound().bind(this);
 		getOutbound().bind(this);
 	}
-	 */
+	*/
 
 
 	/**
@@ -172,7 +173,7 @@ public abstract class RxConnection {
 		state = State.WAITING_FOR_CONNECTION_COMPLETION;
 
 		// notify selector
-		getEndpoint().keySelectorWakeup();
+		selector.wakeup();
 	}
 
 	/**
@@ -199,7 +200,7 @@ public abstract class RxConnection {
 	}
 
 
-
+	
 
 	/**
 	 * The underlying socket channel
@@ -211,7 +212,7 @@ public abstract class RxConnection {
 	}
 
 	public void wakeup() {
-		getEndpoint().keySelectorWakeup();
+		selector.wakeup();
 	}
 
 
@@ -220,14 +221,11 @@ public abstract class RxConnection {
 	 */
 	public void pullInterestOps() {
 
-
-
-
 		/**
 		 * Concurrency is handled at this point: if the connection is busy, we skid this
 		 * step (knowing that it will be call back soon). Note that, if it is never callback
 		 */
-		synchronized (lock) {
+		if(isBusy.compareAndSet(false, true)) {
 
 			if(socketChannel.isOpen()) {
 
@@ -283,7 +281,11 @@ public abstract class RxConnection {
 				 */
 				state = State.CLOSING;
 			}
-		} /* </synchronized> */
+
+			isBusy.set(false);
+		}
+		//else {
+		/* in case we cannot access the connection, we presume that interest has not changed */
 
 
 	}
@@ -298,7 +300,7 @@ public abstract class RxConnection {
 		 * step (knowing that it will be call back soon). Note that, in most case, only one operation at a time on
 		 * a single connection (HTTP2 is per stream, multiplexed and continuous flow).
 		 */
-		synchronized(lock) {
+		if(isBusy.compareAndSet(false, true)) {
 
 			try {
 				// Duplicate security line
@@ -324,7 +326,7 @@ public abstract class RxConnection {
 							}
 						}
 						break;
-
+						
 					case CONNECTED :
 
 						// filter OP_READ
@@ -344,9 +346,9 @@ public abstract class RxConnection {
 								this.state = State.CLOSING;
 							}
 						}
-
+						
 						break;
-
+						
 					case CLOSING :
 
 						// close underlying channel
@@ -362,7 +364,7 @@ public abstract class RxConnection {
 
 						// detach from end-points list
 						pool.remove(id);
-
+						
 						// switch state
 						state = State.CLOSED;
 						break;
@@ -379,15 +381,15 @@ public abstract class RxConnection {
 				//
 				if(isRxLayerVerbose) {
 					System.out.println("[RxConnection]: connection push has encountered an error: "+exception.getMessage());
-					System.out.println("[RxConnection]: SKIPPED and continued");	
+					System.out.println("[RxConnection]: SKIPPE and continued");	
 				}
 
 				// close connection
 				state = State.CLOSING;
 			}
 
-
-		} /* </synchronized> */
+			isBusy.set(false);
+		}
 
 	}
 

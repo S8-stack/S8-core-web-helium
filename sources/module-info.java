@@ -9,7 +9,9 @@ module com.s8.core.web.helium {
 	
 
 	exports com.s8.core.web.helium.mime;
+	
 	exports com.s8.core.web.helium.rx;
+	
 	
 	exports com.s8.core.web.helium.ssl.v1;
 	

@@ -14,7 +14,7 @@ import com.s8.core.arch.silicon.watch.WatchSiTask;
  * @author pierreconvert
  *
  */
-public class SelectKeysTask implements WatchSiTask {
+public class SelectKeys implements WatchSiTask {
 
 
 	/**
@@ -22,7 +22,7 @@ public class SelectKeysTask implements WatchSiTask {
 	 */
 	private final RxServer server;
 	
-	public SelectKeysTask(RxServer server) {
+	public SelectKeys(RxServer server) {
 		this.server = server;
 	}
 	
@@ -74,7 +74,7 @@ public class SelectKeysTask implements WatchSiTask {
 					 *  (the connection has already been created)
 					 */
 					else { 
-						server.getSiliconEngine().pushAsyncTask(new ProcessKeyTask(key));
+						server.getEngine().pushAsyncTask(new ProcessKey(key));
 					}
 				}
 
@@ -112,7 +112,7 @@ public class SelectKeysTask implements WatchSiTask {
 		/*
 		 * WHATEVER happened, we push a new SelectKeys task to re-iterate
 		 */
-		return new SelectKeysTask(server);
+		return new SelectKeys(server);
 	}
 
 	

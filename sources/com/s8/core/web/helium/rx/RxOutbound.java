@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-import javax.net.ssl.SSLSession;
-
 
 /**
  * <h1>IOReactive</h1>
@@ -29,10 +27,7 @@ public abstract class RxOutbound {
 
 
 	public final String name;
-
-	private final Object lock = new Object();
-
-
+	
 	/**
 	 * socket channel
 	 */
@@ -40,10 +35,19 @@ public abstract class RxOutbound {
 
 
 	/**
-	 * the outbound byte buffer. MUST be left in WRITE mode.
+	 * the outbound byte buffer
 	 */
-	public ByteBuffer networkBuffer;
+	private ByteBuffer networkBuffer;
 
+
+
+	private NetworkBufferResizer resizer = new NetworkBufferResizer() {
+
+		@Override
+		public ByteBuffer resizeNetworkBuffer(int capacity) {
+			return (networkBuffer = ByteBuffer.allocate(capacity));
+		}
+	};
 
 
 	/**
@@ -51,65 +55,35 @@ public abstract class RxOutbound {
 	 */
 	private Need need;
 
-	private int nBytesWritten;
+	private int lastWriteBytecount;
+
 
 
 	private final boolean rx_isVerbose;
 
 
-	public RxOutbound(String name, RxWebConfiguration configuration) {
+	public RxOutbound(String name, int capacity, RxWebConfiguration configuration) {
 		super();
-
-		this.name = name  + ".outbound";
+		
+		this.name = name + ".outbound";
 
 		this.need = Need.NONE;
 
+		networkBuffer = ByteBuffer.allocate(capacity);
 		this.rx_isVerbose = configuration.isRxVerbose;
 	}
 
 	public abstract RxConnection getConnection();
 
-
+	
 	/**
 	 * 
 	 * @param connection
 	 */
 	public void Rx_bind(RxConnection connection) {
 		this.socketChannel = getConnection().getSocketChannel();
-
 	}
 
-
-	public void initializeNetworkBuffer(int capacity) {
-		networkBuffer = ByteBuffer.allocate(capacity);
-	}
-
-	/**
-	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
-	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
-	 * with capacity twice the size of the initial one.
-	 *
-	 * @param buffer - the buffer to be enlarged.
-	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
-	 * @return A new buffer with a larger capacity.
-	 */
-	public void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
-
-		if(sessionProposedCapacity > networkBuffer.capacity()) {
-
-			/* allocate new buffer */
-			ByteBuffer extendedBuffer = ByteBuffer.allocate(sessionProposedCapacity);
-
-			/* put networkBuffer in READ mode */
-			networkBuffer.flip();
-
-			/* copy remaining content */
-			extendedBuffer.put(networkBuffer);
-
-			/* replace (networkBuffer is in WRITE mode) */
-			networkBuffer = extendedBuffer;	
-		}		
-	}
 
 
 	/**
@@ -130,16 +104,7 @@ public abstract class RxOutbound {
 	 *         </ul>
 	 * @throws IOException 
 	 */
-	public abstract void onPreRxSending() throws IOException;
-
-	/**
-	 * <p>
-	 * Callback function when write to socket channel has occured
-	 * </p>
-	 * 
-	 * @throws IOException 
-	 */
-	public abstract void onPostRxSending(int nBytesWritten) throws IOException;
+	public abstract void onRxSending(ByteBuffer networkBuffer, NetworkBufferResizer resizer) throws IOException;
 
 
 	/**
@@ -147,7 +112,7 @@ public abstract class RxOutbound {
 	 * 
 	 * @return
 	 */
-	public abstract void onRxRemotelyClosed();
+	public abstract void onRxRemotelyClosed(ByteBuffer networkBuffer);
 
 
 	/**
@@ -155,73 +120,73 @@ public abstract class RxOutbound {
 	 * @param exception
 	 * @throws IOException 
 	 */
-	public abstract void onRxFailed(IOException exception);
+	public abstract void onRxFailed(ByteBuffer networkBuffer, IOException exception);
 
 	/**
 	 * 
 	 * @return false if write operation did NOT result into an outbound termination, true otherwise
 	 */
 	public Need write() {
-		synchronized (lock) {
-			
-			try {
-				if(need==Need.SEND) {
-
-					// write as much as possible (I/O operation is always expensive)
-					onPreRxSending();
-
-					/* buffer READ_MODE start of section */
-					// flip to prepare passing on socket channel
-					networkBuffer.flip();
 
 
-					// write operation
-					nBytesWritten = socketChannel.write(networkBuffer);
+		try {
 
-					/* 
-					 * Everything might not have been written, 
-					 * so compact (and switch to direct write mode) */
-					networkBuffer.compact();
-					/* buffer READ_MODE end of section */
-
-					onPostRxSending(nBytesWritten);
-
-
-					/* network buffer MUST be cleared to declare that we don't need anymore SEND */
-					if(networkBuffer.position() == 0) {
-						//
-						need = Need.NONE;
-					}
-					/* remote closing */
-					else if(nBytesWritten==-1) {
-
-						// reset flag
-						need = Need.SHUT_DOWN;
-
-						onRxRemotelyClosed();
-					}
-				}
-			} 
-			catch (IOException exception) {
-
-				// print exception
-				if(rx_isVerbose) {
-					System.out.println("[RxOutbound] write encounters an exception:");
-					System.out.println("\t"+exception.getMessage());
-					System.out.println("\t--> SHUT_DOWN required");				
-				}
+			if(need==Need.SEND) {
 
 				// reset flag
-				need = Need.SHUT_DOWN;
+				need = Need.NONE;
 
-				onRxFailed(exception);
+
+				// write as much as possible (I/O operation is always expensive)
+				onRxSending(networkBuffer, resizer);
+
+				/* buffer READ_MODE start of section */
+				// flip to prepare passing on socket channel
+				networkBuffer.flip();
+
+
+				// write operation
+				lastWriteBytecount = socketChannel.write(networkBuffer);
+
+				/* 
+				 * Everything might not have been written, 
+				 * so compact (and switch to direct write mode) */
+				networkBuffer.compact();
+				/* buffer READ_MODE end of section */
+
+
+				// remote closing
+				if(lastWriteBytecount==-1) {
+
+					// reset flag
+					need = Need.SHUT_DOWN;
+
+					onRxRemotelyClosed(networkBuffer);
+				}
 			}
-			return need;
+		} 
+		catch (IOException exception) {
 
-		} /* </synchronized> */
+			// print exception
+			if(rx_isVerbose) {
+				System.out.println("[RxOutbound] write encounters an exception:");
+				System.out.println("\t"+exception.getMessage());
+				System.out.println("\t--> SHUT_DOWN required");				
+			}
+
+			// reset flag
+			need = Need.SHUT_DOWN;
+
+			onRxFailed(networkBuffer, exception);
+		}
+
+		return need;
 	}
 
+
+
 	public void send() {
+
 
 
 		/* <DEBUG> 
@@ -234,24 +199,19 @@ public abstract class RxOutbound {
 		// update flag
 		need = Need.SEND;
 
-
-		getConnection().pullInterestOps();
-
 		// notify selector
 		getConnection().wakeup();
 	}
 
 
-
-
 	public Need getState() {
-		synchronized (lock) { return need; } 
+		return need;
 	}
 
 
 
 	public int getLastWriteBytecount() {
-		return nBytesWritten;
+		return lastWriteBytecount;
 	}
 
 

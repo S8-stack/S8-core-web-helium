@@ -18,20 +18,15 @@ import java.nio.channels.SocketChannel;
  *
  */
 public abstract class RxInbound {
-
-
-
+	
+	
 	public enum Need {
-
+		
 		NONE, RECEIVE, SHUT_DOWN;
-
+		
 	}
 
-
 	public final String name;
-
-
-	private final Object lock = new Object();
 
 	/**
 	 * /**
@@ -44,17 +39,13 @@ public abstract class RxInbound {
 	 * @param resizer a handler to trigger resizing
 	 * @throws IOException 
 	 */
-	public abstract void onRxReceived() throws IOException;
+	public abstract void onRxReceived(ByteBuffer networkBuffer, NetworkBufferResizer resizer) throws IOException;
 
 
-	/**
-	 * 
-	 * @throws IOException
-	 */
-	public abstract void onRxRemotelyClosed() throws IOException;
+	public abstract void onRxRemotelyClosed(ByteBuffer networkBuffer) throws IOException;
 
 
-	public abstract void onRxReceptionFailed(IOException exception) throws IOException;
+	public abstract void onRxReceptionFailed(ByteBuffer networkBuffer, IOException exception) throws IOException;
 
 	/**
 	 * the channel
@@ -81,100 +72,59 @@ public abstract class RxInbound {
 
 
 
-	/**
-	 * MUST be left in READ mode.
-	 */
 	public ByteBuffer networkBuffer;
 
 	private int nBytes;
 
-
+	
 	/**
 	 * Settings
 	 */
 	public final boolean Rx_isVerbose;
 
+	private NetworkBufferResizer resizer = new NetworkBufferResizer() {
+
+		@Override
+		public ByteBuffer resizeNetworkBuffer(int capacity) {
+			return (networkBuffer = ByteBuffer.allocate(capacity));
+		}		
+	};
 
 
 
-	public RxInbound(String name, RxWebConfiguration configuration) {
+
+	public RxInbound(String name, int capacity, RxWebConfiguration configuration) {
 		super();
 		this.name = name + ".inbound";
 		need = Need.NONE;
-
+		networkBuffer = ByteBuffer.allocate(capacity);
 		this.Rx_isVerbose = configuration.isRxVerbose;
 
-
+		// set buffer so that first compact left it ready for writing
+		networkBuffer.position(0);
+		networkBuffer.limit(0);
 	}
 
-
+	
 	public abstract RxConnection getConnection();
 
-
-
-	/**
-	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
-	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
-	 * with capacity twice the size of the initial one.
-	 *
-	 * @param buffer - the buffer to be enlarged.
-	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
-	 * @return A new buffer with a larger capacity.
-	 */
-	public void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
-
-		synchronized (lock) {
-			/* allocate new buffer */
-			ByteBuffer extendedBuffer = ByteBuffer.allocate(
-					sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
-						networkBuffer.capacity() * 2);
-
-			/* copy remaining content */
-			extendedBuffer.put(networkBuffer);
-
-			/* replace */
-			networkBuffer = extendedBuffer;
-
-			/* network buffer is now in READ mode */
-			networkBuffer.flip();	
-		}
-	}
-
-
+	
+	
+	
 	/**
 	 * 
 	 * @param connection
 	 */
 	public void Rx_bind(RxConnection connection) {
 		this.socketChannel = connection.getSocketChannel();
-
-
 	}
-
-
-	/**
-	 * 
-	 * @param capacity
-	 */
-	public void initializeNetworkBuffer(int capacity) {
-		synchronized (lock) {
-			// set buffer so that first compact left it ready for writing
-			networkBuffer = ByteBuffer.allocate(capacity);
-			networkBuffer.position(0);
-			networkBuffer.limit(0);	
-		}
-	}
-
-
-
+	
+	
+	
 
 	public Need getState() {
-		synchronized (lock) { return need; }
+		return need;
 	}
-
-
-
-
 
 
 	/**
@@ -182,8 +132,8 @@ public abstract class RxInbound {
 	 */
 	public void receive() {
 
-
-
+		
+		
 		/* <DEBUG> 
 
 		System.out.println(">>Receive asked (previously: "+need+")");
@@ -191,11 +141,9 @@ public abstract class RxInbound {
 			throw new RuntimeException("Cannot ask for sending once shut down has been requested");
 		}
 		</DEBUG> */
-
+		
 		// update flag
-		synchronized (lock) { need = Need.RECEIVE; }
-
-		getConnection().pullInterestOps();
+		need = Need.RECEIVE;
 
 		// notify selector
 		getConnection().wakeup();
@@ -208,55 +156,46 @@ public abstract class RxInbound {
 	 * @throws IOException 
 	 */
 	public Need read() throws IOException {
-		synchronized (lock) { /* <sync:low-contention> */
 
+		try {
 
-			try {
+			if(need==Need.RECEIVE) {
+				
+				// no opinion on what to do next
+				need = Need.NONE;
+			
+				/* buffer WRITE_MODE start of section */
+				// optimize inbound buffer free space
+				networkBuffer.compact();
 
-				if(need==Need.RECEIVE) {
+				// read
+				nBytes = socketChannel.read(networkBuffer);
 
-
-
-					/* buffer WRITE_MODE start of section */
-					// optimize inbound buffer free space
-					networkBuffer.compact();
-
-					// read
-					nBytes = socketChannel.read(networkBuffer);
-
-					if(nBytes==-1) {
-						onRxRemotelyClosed();
-					}
-
-					// flip
-					networkBuffer.flip();
-					/* buffer WRITE_MODE end of section */
-
-					// trigger callback function with buffer ready for reading
-					if(nBytes > 0) { 
-
-						/* clear need, wait for upper layer ot decide if we need more recieve */
-						need = Need.NONE;
-
-						/* transmit to upper layer*/
-						onRxReceived(); 
-					}
-				}
-			}
-			catch(IOException exception) {
-
-				if(Rx_isVerbose) {
-					System.out.println("[RxInbound] read encounters an exception: "+exception.getMessage());
-					System.out.println("\t --> require SHUT_DOWN");
+				if(nBytes==-1) {
+					onRxRemotelyClosed(networkBuffer);
 				}
 
-				onRxReceptionFailed(exception);
+				// flip
+				networkBuffer.flip();
+				/* buffer WRITE_MODE end of section */
 
-				need = Need.SHUT_DOWN;
+				// trigger callback function with buffer ready for reading
+				onRxReceived(networkBuffer, resizer);
+			}
+		}
+		catch(IOException exception) {
+
+			if(Rx_isVerbose) {
+				System.out.println("[RxInbound] read encounters an exception: "+exception.getMessage());
+				System.out.println("\t --> require SHUT_DOWN");
 			}
 
-			return need;
-		} /* </synchronized> */
+			onRxReceptionFailed(networkBuffer, exception);
+
+			need = Need.SHUT_DOWN;
+		}
+		
+		return need;
 	};
 
 

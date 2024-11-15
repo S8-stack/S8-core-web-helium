@@ -2,7 +2,6 @@ package com.s8.core.web.helium.rx;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
@@ -35,7 +34,10 @@ public abstract class RxClient implements RxEndpoint {
 	@Override
 	public abstract RxWebConfiguration getWebConfiguration();
 
-	
+	@Override
+	public Selector getSelector() {
+		return selector;
+	}
 
 
 	public abstract RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException;
@@ -104,7 +106,7 @@ public abstract class RxClient implements RxEndpoint {
 
 					if(key!=null) {
 						connection.pushReadyOps();
-					}
+					}	
 				}
 
 
@@ -125,13 +127,4 @@ public abstract class RxClient implements RxEndpoint {
 		connection.connect();
 	}
 
-	@Override
-	public SelectionKey buildKey(SocketChannel socketChannel) throws ClosedChannelException {
-		return socketChannel.register(selector, 0);
-	}
-
-	@Override
-	public void keySelectorWakeup() {
-		selector.wakeup();
-	}
 }
