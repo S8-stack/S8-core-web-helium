@@ -52,6 +52,12 @@ public abstract class SSL_Inbound extends RxInbound {
 
 	private final Object lock = new Object();
 
+	private final static int UNWRAP = 0x00;
+
+	private final static int STOP = 0x01;
+	private final static int WRAP = 0x02;
+	private final static int RECEIVE = 0x04;
+
 
 
 
@@ -108,7 +114,6 @@ public abstract class SSL_Inbound extends RxInbound {
 
 		// bind 0
 		this.engine = connection.ssl_getEngine();
-
 		this.outbound = connection.getOutbound();
 
 		initializeNetworkBuffer(engine.getSession().getPacketBufferSize());
@@ -157,17 +162,22 @@ public abstract class SSL_Inbound extends RxInbound {
 	 * 
 	 */
 	public void ssl_launchUnwrap() {
+		
+		int nextOp = UNWRAP;
+		
 		synchronized (lock) {
-			
-			boolean isContinued = true;
-			
-			while(isContinued) {
-				isContinued = unwrap();
-			}
+
+			while(nextOp == UNWRAP) { nextOp = unwrap(); }
+
 			if(SSL_isVerbose) {
 				System.out.println("[SSL_Inbound] "+name+" Exiting run...");
 			}
 		}
+
+		/* avoid dead lock by performaing following up operations outside critical section */
+		if((nextOp & RECEIVE) == RECEIVE) { receive(); }
+
+		if((nextOp & WRAP) == WRAP) { outbound.ssl_launchWrap(); }
 	}
 
 
@@ -175,7 +185,7 @@ public abstract class SSL_Inbound extends RxInbound {
 	/* <main> */
 
 
-	private boolean unwrap() {
+	private int unwrap() {
 
 		try {
 
@@ -220,46 +230,46 @@ public abstract class SSL_Inbound extends RxInbound {
 				switch(result.getStatus()) {
 
 				/* everything is fine, so process normally -> one more run */
-				case OK: return true;
+				case OK: return UNWRAP;
 
 				/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					boolean isReceivedRequired = handleNetworkBufferUnderflow();
-					if(isReceivedRequired) { receive(); return false; }
-					else { return true; }
+					if(isReceivedRequired) { return STOP | RECEIVE; }
+					else { return UNWRAP; }
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					handleApplicationBufferOverflow();
-					return true;
+					return UNWRAP;
 
 					/* this side has been closed, so initiate closing */
-				case CLOSED: return false;
+				case CLOSED: return STOP;
 
 				default: throw new SSLException("Unsupported SSLResult status");
 				}
 
 			case NEED_WRAP: 
 
-				/* launch outbound side, do not add a loop */
-				outbound.ssl_launchWrap(); 
+
 
 				switch(result.getStatus()) {
 
 				/* not need to continue */
-				case OK: return false;
+				/* launch outbound side, do not add a loop */
+				case OK: return STOP | WRAP;
 
 				/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					boolean isReceivedRequired = handleNetworkBufferUnderflow();
-					if(isReceivedRequired) { receive(); return false; }
-					else { return true; }
+					if(isReceivedRequired) { return STOP | WRAP | RECEIVE; }
+					else { return STOP | WRAP; }
 
 					/* continue wrapping, because no additional I/O call involved */
-				case BUFFER_OVERFLOW: handleApplicationBufferOverflow(); return false;
+				case BUFFER_OVERFLOW: handleApplicationBufferOverflow(); return STOP | WRAP;
 
 				/* this side has been closed, so initiate closing */
-				case CLOSED: close(); return false;
+				case CLOSED: close(); return STOP;
 
 				default: throw new SSLException("Unsupported SSLResult status");
 				}
@@ -273,30 +283,29 @@ public abstract class SSL_Inbound extends RxInbound {
 				switch(result.getStatus()) {
 
 				/* handle delegated task */
-				case OK: runDelegatedTasks(); return true;
+				case OK: runDelegatedTasks(); return UNWRAP;
 
 				/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					runDelegatedTasks();
 					boolean isReceivedRequired = handleNetworkBufferUnderflow();
 					if(isReceivedRequired) {
-						receive();
-						return false; /* stop */
+						return STOP | RECEIVE; /* stop */
 					}
 					else {
-						return true; /* continue */
+						return UNWRAP; /* continue */
 					}
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					runDelegatedTasks();
 					handleApplicationBufferOverflow();
-					return true;
+					return UNWRAP;
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
 					close();
-					return false; /* stop */
+					return STOP; /* stop */
 
 				default : throw new SSLException("Unsupported SSLResult status");
 				}
@@ -310,28 +319,28 @@ public abstract class SSL_Inbound extends RxInbound {
 				switch(result.getStatus()) {
 
 				case OK: 
-					return networkBuffer.hasRemaining(); /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
 
 					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					boolean isReceivingRequired = handleNetworkBufferUnderflow();
 					if(isReceivingRequired) { 
-						receive(); return false; /* stop to wait for entword data */ 
+						return STOP | RECEIVE; /* stop to wait for entword data */ 
 					}
 					else {
-						return networkBuffer.hasRemaining(); /* continue is something is left to read from network*/
+						return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
 					}
 
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					handleApplicationBufferOverflow();
-					return networkBuffer.hasRemaining(); /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
 					close();
-					return false; /* terminated */
+					return STOP; /* terminated */
 
 				default : throw new SSLException("Unsupported SSLResult status");
 				}
@@ -342,28 +351,28 @@ public abstract class SSL_Inbound extends RxInbound {
 				switch(result.getStatus()) {
 
 				case OK: 
-					return networkBuffer.hasRemaining(); /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
 
 					/* stop the flow, because need to pump more data */
 				case BUFFER_UNDERFLOW: 
 					boolean isReceivingRequired = handleNetworkBufferUnderflow();
 					if(isReceivingRequired) { 
-						receive(); return false; /* stop to wait for entword data */ 
+						return STOP | RECEIVE; /* stop to wait for entword data */ 
 					}
 					else {
-						return networkBuffer.hasRemaining(); /* continue is something is left to read from network*/
+						return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
 					}
 
 
 					/* continue wrapping, because no additional I/O call involved */
 				case BUFFER_OVERFLOW: 
 					handleApplicationBufferOverflow();
-					return networkBuffer.hasRemaining(); /* continue is something is left to read from network*/
+					return networkBuffer.hasRemaining() ? UNWRAP : STOP; /* continue is something is left to read from network*/
 
 					/* this side has been closed, so initiate closing */
 				case CLOSED: 
 					close();
-					return false; /* terminated */
+					return STOP; /* terminated */
 
 				default : throw new SSLException("Unsupported SSLResult status");
 				}
@@ -388,13 +397,13 @@ public abstract class SSL_Inbound extends RxInbound {
 
 			}
 
-			return true;
+			return STOP;
 		}
 	}
-	
+
 
 	/* </main> */
-	
+
 
 	/* <handles> */
 
@@ -516,7 +525,7 @@ public abstract class SSL_Inbound extends RxInbound {
 
 
 	/* </handles> */
-	
+
 	/* <utilities> */
 
 

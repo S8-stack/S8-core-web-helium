@@ -13,6 +13,8 @@ import com.s8.core.web.helium.rx.RxOutbound;
 import com.s8.core.web.helium.utilities.HeUtilities;
 
 
+
+
 /**
  * <p>
  * SSL_Outbound
@@ -58,8 +60,15 @@ public abstract class SSL_Outbound extends RxOutbound {
 	boolean SSL_isVerbose = false;
 
 
-	public final Object lock = new Object();
+	private final Object lock = new Object();
 
+	
+	private final static int WRAP = 0x00;
+	
+	private final static int STOP = 0x01;
+	private final static int UNWRAP = 0x02;
+	private final static int SEND = 0x04;
+	
 	/**
 	 * 
 	 * @param channel
@@ -148,17 +157,27 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 * Key entry point
 	 */
 	void ssl_launchWrap() {
+		
+		int nextOp = WRAP;
+		
 		synchronized (lock) {
+			
+		
 
-			boolean isContinued = true;
-
-			while(isContinued) {
-				isContinued = wrap();
-			}
+			/**
+			 * 
+			 */
+			while(nextOp == WRAP) { nextOp = wrap(); }
+			
 			if(SSL_isVerbose) {
 				System.out.println("[SSL_Outbound] "+name+" Exiting run...");
 			}
 		}
+		
+		/* avoid dead lock by performaing following up operations outside critical section */
+		if((nextOp & SEND) == SEND) { send(); }
+		
+		if((nextOp & UNWRAP) == UNWRAP) { inbound.ssl_launchUnwrap(); }
 	}
 
 
@@ -176,7 +195,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 	/* <main> */
 
-	private boolean wrap() {
+	private int wrap() {
 		/* <retrieve> */
 
 		/*
@@ -236,23 +255,22 @@ public abstract class SSL_Outbound extends RxOutbound {
 			case NEED_WRAP: 
 				switch(result.getStatus()) {
 
-				case OK: return true; /* continue */
+				case OK: return WRAP; /* continue */
 
 				case BUFFER_UNDERFLOW: 
 					handleApplicationBufferUnderflow(); 
-					return true; /* continue */
+					return WRAP; /* continue */
 
 				case BUFFER_OVERFLOW: 
 					boolean isSendingRequired = handleNetworkBufferOverflow(); // will trigger send if necessary
 					if(isSendingRequired) {
-						send();
-						return false;
+						return STOP | SEND;
 					}
 					else {
-						return true; /* continue */
+						return WRAP; /* continue */
 					}
 
-				case CLOSED: close(); return false; /* stop */
+				case CLOSED: close(); return WRAP; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());
 				}
@@ -265,32 +283,29 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 				/* before switching to unwrap, release what has been written */
 				case OK: 
-					inbound.ssl_launchUnwrap();
 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) {  send(); }
-					return false; /* in any case, stop here */
+					if(networkBuffer.position() > 0) {  return STOP | SEND | UNWRAP; }
+					else { return STOP | UNWRAP; } /* in any case, stop here */ 
 
 
 				case BUFFER_UNDERFLOW: 
-					inbound.ssl_launchUnwrap();
 					handleApplicationBufferUnderflow(); 
 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) {  send(); }
-					return false; /* in any case, stop here */
+					if(networkBuffer.position() > 0) {  return STOP | SEND | UNWRAP; }
+					else { return STOP | UNWRAP; } /* in any case, stop here */ 
 
 				case BUFFER_OVERFLOW: 
-					inbound.ssl_launchUnwrap();
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(isSendingRequired || networkBuffer.position() > 0) {  send(); }
-					return false; /* in any case, stop here */
+					if(isSendingRequired || networkBuffer.position() > 0) {  return STOP | SEND | UNWRAP; }
+					else { return STOP | UNWRAP; } /* in any case, stop here */ 
 
 				case CLOSED: 
 					inbound.ssl_launchUnwrap();
-					close(); return false; /* stop */
+					close(); return STOP; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());
 				}
@@ -307,26 +322,26 @@ public abstract class SSL_Outbound extends RxOutbound {
 				case OK: 
 					runDelegatedTasks();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { send(); return false; }
-					else { return true; /* continue */  }
+					if(networkBuffer.position() > 0) { return STOP | SEND; }
+					else { return WRAP; /* continue */  }
 
 				case BUFFER_UNDERFLOW: 
 					runDelegatedTasks();
 					handleApplicationBufferUnderflow(); 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { send(); return false; }
-					else { return true; /* continue */  }
+					if(networkBuffer.position() > 0) { return STOP | SEND; }
+					else { return WRAP; /* continue */  }
 
 				case BUFFER_OVERFLOW: 
 					runDelegatedTasks();
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(isSendingRequired || networkBuffer.position() > 0) { send(); return false; }
-					else { return true; /* continue */  }
+					if(isSendingRequired || networkBuffer.position() > 0) { return STOP | SEND; }
+					else { return WRAP; /* continue */  }
 
 				case CLOSED: 
 					runDelegatedTasks();
-					close(); return false; /* stop */
+					close(); return STOP; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());
 				}
@@ -341,22 +356,22 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 				case OK: 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { send(); return false; /* STOP_AND_SEND */ }
-					else { return true; /* continue */  }
+					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
+					else { return WRAP; } /* continue */
 
 				case BUFFER_UNDERFLOW: 
 					handleApplicationBufferUnderflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { send(); return false; /* STOP_AND_SEND */ }
-					else { return true; /* continue */  }
+					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
+					else { return WRAP; } /* continue */ 
 
 				case BUFFER_OVERFLOW: 
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(isSendingRequired || networkBuffer.position() > 0) { send(); return false; /* STOP_AND_SEND */ }
-					else { return true; /* continue */  }
+					if(isSendingRequired || networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */
+					else { return WRAP; } /* continue */ 
 
-				case CLOSED: close(); return false; /* stop */
+				case CLOSED: close(); return STOP; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());
 				}	
@@ -367,25 +382,25 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 				case OK: 
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { send(); return false; /* STOP_AND_SEND */ }
+					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
 					/* continue is there is data left in application buffer (WRITE MODE) to be sent */  
-					else { return applicationBuffer.position() > 0; }
+					else { return applicationBuffer.position() > 0 ? WRAP : STOP; }
 
 				case BUFFER_UNDERFLOW: 
 					handleApplicationBufferUnderflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(networkBuffer.position() > 0) { send(); return false; /* STOP_AND_SEND */ }
+					if(networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
 					/* continue is there is data left in application buffer (WRITE MODE) to be sent */  
-					else { return applicationBuffer.position() > 0; }
+					else { return applicationBuffer.position() > 0 ? WRAP : STOP; }
 
 				case BUFFER_OVERFLOW: 
 					boolean isSendingRequired = handleNetworkBufferOverflow();
 					/* for any other task than WRAP (accumulating bytes to be sent) send immediately what's possible */
-					if(isSendingRequired || networkBuffer.position() > 0) { send(); return false; /* STOP_AND_SEND */ }
+					if(isSendingRequired || networkBuffer.position() > 0) { return STOP | SEND; } /* STOP_AND_SEND */ 
 					/* continue is there is data left in application buffer (WRITE MODE) to be sent */  
-					else { return applicationBuffer.position() > 0; }
+					else { return applicationBuffer.position() > 0 ? WRAP : STOP; }
 
-				case CLOSED: close(); return false; /* stop */
+				case CLOSED: close(); return STOP; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());
 				}	
@@ -402,7 +417,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 			}
 			// Everything went wrong, so try launching the closing procedure
 			close();
-			return false;
+			return STOP;
 		}
 	}
 

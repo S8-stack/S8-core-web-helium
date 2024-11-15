@@ -40,6 +40,7 @@ public abstract class SSL_Connection extends RxConnection {
 
 
 	public boolean isClosed;
+	
 
 
 
