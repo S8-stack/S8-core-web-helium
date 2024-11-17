@@ -1,6 +1,7 @@
 package com.s8.core.web.helium.ssl.v1;
 
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import javax.net.ssl.SSLContext;
@@ -49,8 +50,8 @@ public abstract class SSL_Connection extends RxConnection {
 	 * 
 	 * 
 	 */
-	public SSL_Connection(SocketChannel channel) throws IOException {
-		super(channel);
+	public SSL_Connection(SelectionKey key, SocketChannel channel) throws IOException {
+		super(key, channel);
 	}
 	
 	
@@ -203,9 +204,9 @@ public abstract class SSL_Connection extends RxConnection {
 		return isServerSide;
 	}
 
-	@Override
-	public void close() {
-		super.close();
+	
+	public void ssl_close() {
+		rx_close();
 		isClosed = true;
 	}
 

@@ -41,7 +41,7 @@ public class RxWebConfiguration {
 	public boolean isRxVerbose;
 
 	
-	public int poolCapacity = Pool.DEFAULT_CAPACITY;
+	public int poolCapacity = 1024;
 	
 	
 	public RxWebConfiguration() {

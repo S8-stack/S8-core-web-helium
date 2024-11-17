@@ -1,14 +1,10 @@
 package com.s8.core.web.helium.rx;
 
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
-
 import com.s8.core.arch.silicon.SiliconEngine;
 
 public interface RxEndpoint {
 
-	public RxWebConfiguration getWebConfiguration();
+	public abstract RxWebConfiguration getWebConfiguration();
 
 	//public Selector getSelector();
 
@@ -20,11 +16,11 @@ public interface RxEndpoint {
 	public abstract SiliconEngine getSiliconEngine();
 	
 	
-	public void start() throws Exception;
+	public abstract void start() throws Exception;
 
-	public void stop() throws Exception;
+	public abstract void stop() throws Exception;
 
-	public SelectionKey buildKey(SocketChannel socketChannel) throws ClosedChannelException;
+	
 
-	public void keySelectorWakeup();
+	public abstract void keySelectorWakeup();
 }

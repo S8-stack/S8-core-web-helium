@@ -56,7 +56,7 @@ public class HTTP1_Outbound extends RxOutbound {
 	}
 
 	@Override
-	public void onPreRxSending() {
+	public void rx_onPreSending() {
 		pull();
 		
 		boolean isSending = composing!=null;
@@ -83,17 +83,17 @@ public class HTTP1_Outbound extends RxOutbound {
 
 	
 	@Override
-	public void onPostRxSending(int nBytesWritten) throws IOException {
+	public void rx_onPostSending(int nBytesWritten) throws IOException {
 	}
 
 
 	@Override
-	public void onRxRemotelyClosed() {
+	public void rx_onRemotelyClosed() {
 		connection.close();
 	}
 
 	@Override
-	public void onRxFailed(IOException exception) {
+	public void rx_onFailed(IOException exception) {
 		connection.close();	
 	}
 

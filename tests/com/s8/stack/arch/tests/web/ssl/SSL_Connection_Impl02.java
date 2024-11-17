@@ -1,6 +1,7 @@
 package com.s8.stack.arch.tests.web.ssl;
 
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.web.helium.ssl.v1.SSL_Connection;
@@ -19,10 +20,10 @@ public class SSL_Connection_Impl02 extends SSL_Connection {
 	private SSL_Outbound outbound;
 	
 	
-	public SSL_Connection_Impl02(SSL_Endpoint endpoint, SocketChannel socketChannel, 
+	public SSL_Connection_Impl02(SSL_Endpoint endpoint, SelectionKey key, SocketChannel channel, 
 			SSL_Inbound_Impl02 inbound,
 			SSL_Outbound_Impl02 outbound) throws IOException {
-		super(socketChannel);
+		super(key, channel);
 		
 		this.endpoint = endpoint;
 		

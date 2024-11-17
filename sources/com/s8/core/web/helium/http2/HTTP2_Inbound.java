@@ -34,7 +34,7 @@ public class HTTP2_Inbound extends SSL_Inbound {
 	public void bind(HTTP2_Connection connection) {
 
 		// Rx
-		Rx_bind(connection);
+		rxBind(connection);
 		
 		// SSL
 		SSL_bind(connection);

@@ -2,7 +2,7 @@ package com.s8.stack.arch.tests.web.ssl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.Selector;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.arch.silicon.SiliconConfiguration;
@@ -31,9 +31,9 @@ public class SSL_RoundTrip02 {
 		SSL_Server server = new SSL_Server() {
 
 			@Override
-			public RxConnection open(SocketChannel socketChannel) throws IOException {
+			public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
 
-				return new SSL_Connection_Impl02(this, socketChannel, 
+				return new SSL_Connection_Impl02(this, key, channel, 
 						new SSL_Inbound_Impl02("server", serverConfig) {
 
 							@Override
@@ -51,7 +51,7 @@ public class SSL_RoundTrip02 {
 							public void SSL_onSending(ByteBuffer buffer) {
 								if(count<4) {
 									buffer.put("Hi! this is server side!!".getBytes());
-									count++;	
+									count++;
 								}
 							}
 
@@ -77,8 +77,8 @@ public class SSL_RoundTrip02 {
 		SSL_Client client = new SSL_Client() {
 
 			@Override
-			public RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException {
-				return new SSL_Connection_Impl02(this, socketChannel, 
+			public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+				return new SSL_Connection_Impl02(this, key, channel, 
 						new SSL_Inbound_Impl02("client", clientConfig) {
 
 							@Override

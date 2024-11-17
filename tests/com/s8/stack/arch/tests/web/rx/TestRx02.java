@@ -1,7 +1,7 @@
 package com.s8.stack.arch.tests.web.rx;
 
 import java.io.IOException;
-import java.nio.channels.Selector;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.arch.silicon.SiliconConfiguration;
@@ -36,13 +36,13 @@ public class TestRx02 {
 			}
 
 			@Override
-			public RxConnection open(SocketChannel socketChannel) throws IOException {
+			public RxConnection rx_createConnection(SelectionKey key, SocketChannel socketChannel) throws IOException {
 
-				return new RxConnection_Impl01(this, socketChannel, 
+				return new RxConnection_Impl01(this, key, socketChannel, 
 						new RxInbound_Impl01("server", webConfig) {
 
 					@Override
-					public void onRxReceived() throws IOException {
+					public void rx_onReceived() throws IOException {
 						int length = networkBuffer.remaining();
 						byte[] bytes = new byte[length];
 						networkBuffer.get(bytes);
@@ -56,7 +56,7 @@ public class TestRx02 {
 				}, new RxOutbound_Impl01("server", webConfig) {
 
 					@Override
-					public void onPreRxSending() {
+					public void rx_onPreSending() {
 					}
 				});
 			}
@@ -81,19 +81,19 @@ public class TestRx02 {
 			}
 
 			@Override
-			public RxConnection open(Selector selector, SocketChannel socketChannel) throws IOException {
-				return new RxConnection_Impl01(this, socketChannel, 
+			public RxConnection rx_createConnection(SelectionKey selectionKey, SocketChannel socketChannel) throws IOException {
+				return new RxConnection_Impl01(this, selectionKey, socketChannel, 
 						new RxInbound_Impl01("client", webConfig) {
 
 					@Override
-					public void onRxReceived() throws IOException {
+					public void rx_onReceived() throws IOException {
 					}
 
 				},
 						new RxOutbound_Impl01("client", webConfig) {
 
 					@Override
-					public void onPreRxSending() throws IOException {
+					public void rx_onPreSending() throws IOException {
 						int n = Math.min(networkBuffer.remaining(), bytes.length);
 						networkBuffer.put(bytes, index, n);
 						index+=n;

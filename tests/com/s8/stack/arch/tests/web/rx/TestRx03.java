@@ -1,7 +1,7 @@
 package com.s8.stack.arch.tests.web.rx;
 
 import java.io.IOException;
-import java.nio.channels.Selector;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -38,12 +38,12 @@ public class TestRx03 {
 			}
 
 			@Override
-			public RxConnection open(SocketChannel channel) throws IOException {
+			public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
 
-				return new RxConnection_Impl01(this, channel, 
+				return new RxConnection_Impl01(this, key, channel, 
 						new RxInbound_Impl01("server", serverConfig) {
 					@Override
-					public void onRxReceived() {
+					public void rx_onReceived() {
 						int length = networkBuffer.remaining();
 						byte[] bytes = new byte[length];
 						networkBuffer.get(bytes);
@@ -57,7 +57,7 @@ public class TestRx03 {
 						new RxOutbound_Impl01("server", serverConfig) {
 
 					@Override
-					public void onPreRxSending() {
+					public void rx_onPreSending() {
 					}
 
 
@@ -119,12 +119,12 @@ public class TestRx03 {
 		public @Override SiliconEngine getSiliconEngine() { return ng; }
 
 		@Override
-		public RxConnection open(Selector selector, SocketChannel channel) throws IOException {
-			return new RxConnection_Impl01(this, channel, 
+		public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+			return new RxConnection_Impl01(this, key, channel, 
 					new RxInbound_Impl01("client", config) {
 
 				@Override
-				public void onRxReceived() {
+				public void rx_onReceived() {
 				}
 
 				
@@ -133,7 +133,7 @@ public class TestRx03 {
 					new RxOutbound_Impl01("client", config) {
 
 				@Override
-				public void onPreRxSending() {
+				public void rx_onPreSending() {
 					if(bytes==null) {
 						pull();
 					}
@@ -150,11 +150,11 @@ public class TestRx03 {
 				}
 
 				@Override
-				public void onRxRemotelyClosed() {
+				public void rx_onRemotelyClosed() {
 				}
 
 				@Override
-				public void onRxFailed(IOException exception) {
+				public void rx_onFailed(IOException exception) {
 				}
 			});
 		}

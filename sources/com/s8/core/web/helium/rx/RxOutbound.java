@@ -22,15 +22,9 @@ import javax.net.ssl.SSLSession;
  */
 public abstract class RxOutbound {
 
-	public enum Need {
-
-		NONE, SEND, SHUT_DOWN;
-	}
 
 
 	public final String name;
-
-	private final Object lock = new Object();
 
 
 	/**
@@ -46,10 +40,6 @@ public abstract class RxOutbound {
 
 
 
-	/**
-	 * trigger sending
-	 */
-	private Need need;
 
 	private int nBytesWritten;
 
@@ -62,7 +52,7 @@ public abstract class RxOutbound {
 
 		this.name = name  + ".outbound";
 
-		this.need = Need.NONE;
+
 
 		this.rx_isVerbose = configuration.isRxVerbose;
 	}
@@ -93,7 +83,7 @@ public abstract class RxOutbound {
 	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
 	 * @return A new buffer with a larger capacity.
 	 */
-	public void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
+	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
 
 		if(sessionProposedCapacity > networkBuffer.capacity()) {
 
@@ -113,6 +103,9 @@ public abstract class RxOutbound {
 
 
 	/**
+	 * 
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * <p>
 	 * Callback function for write.
 	 * </p>
@@ -130,132 +123,116 @@ public abstract class RxOutbound {
 	 *         </ul>
 	 * @throws IOException 
 	 */
-	public abstract void onPreRxSending() throws IOException;
+	public abstract void rx_onPreSending() throws IOException;
 
 	/**
+	 * 
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * <p>
 	 * Callback function when write to socket channel has occured
 	 * </p>
 	 * 
 	 * @throws IOException 
 	 */
-	public abstract void onPostRxSending(int nBytesWritten) throws IOException;
+	public abstract void rx_onPostSending(int nBytesWritten) throws IOException;
 
 
 	/**
+	 * 
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * Callback when has been remotely closed
 	 * 
 	 * @return
 	 */
-	public abstract void onRxRemotelyClosed();
+	public abstract void rx_onRemotelyClosed();
 
 
 	/**
+	 * 
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * Callback when failed
 	 * @param exception
 	 * @throws IOException 
 	 */
-	public abstract void onRxFailed(IOException exception);
+	public abstract void rx_onFailed(IOException exception);
 
 	/**
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
 	 * 
 	 * @return false if write operation did NOT result into an outbound termination, true otherwise
 	 */
-	public Need write() {
-		synchronized (lock) {
-			
-			try {
-				if(need==Need.SEND) {
+	void write() {
 
-					// write as much as possible (I/O operation is always expensive)
-					onPreRxSending();
+		try {
+			if(getConnection().hasNeed(Need.SEND)) {
 
-					/* buffer READ_MODE start of section */
-					// flip to prepare passing on socket channel
-					networkBuffer.flip();
+				// write as much as possible (I/O operation is always expensive)
+				rx_onPreSending();
 
-
-					// write operation
-					nBytesWritten = socketChannel.write(networkBuffer);
-
-					/* 
-					 * Everything might not have been written, 
-					 * so compact (and switch to direct write mode) */
-					networkBuffer.compact();
-					/* buffer READ_MODE end of section */
-
-					onPostRxSending(nBytesWritten);
+				/* buffer READ_MODE start of section */
+				// flip to prepare passing on socket channel
+				networkBuffer.flip();
 
 
-					/* network buffer MUST be cleared to declare that we don't need anymore SEND */
-					if(networkBuffer.position() == 0) {
-						//
-						need = Need.NONE;
-					}
-					/* remote closing */
-					else if(nBytesWritten==-1) {
+				// write operation
+				nBytesWritten = socketChannel.write(networkBuffer);
 
-						// reset flag
-						need = Need.SHUT_DOWN;
+				/* 
+				 * Everything might not have been written, 
+				 * so compact (and switch to direct write mode) */
+				networkBuffer.compact();
+				/* buffer READ_MODE end of section */
 
-						onRxRemotelyClosed();
-					}
+				rx_onPostSending(nBytesWritten);
+
+
+				/* network buffer MUST be cleared to declare that we don't need anymore SEND */
+				if(networkBuffer.position() == 0) {
+					//
+					getConnection().clearNeed(Need.SEND);
 				}
-			} 
-			catch (IOException exception) {
+				/* remote closing */
+				else if(nBytesWritten==-1) {
 
-				// print exception
-				if(rx_isVerbose) {
-					System.out.println("[RxOutbound] write encounters an exception:");
-					System.out.println("\t"+exception.getMessage());
-					System.out.println("\t--> SHUT_DOWN required");				
+					// reset flag
+					getConnection().addNeed(Need.SHUT_DOWN);
+
+					rx_onRemotelyClosed();
 				}
-
-				// reset flag
-				need = Need.SHUT_DOWN;
-
-				onRxFailed(exception);
 			}
-			return need;
+		} 
+		catch (IOException exception) {
 
-		} /* </synchronized> */
-	}
+			// print exception
+			if(rx_isVerbose) {
+				System.out.println("[RxOutbound] write encounters an exception:");
+				System.out.println("\t"+exception.getMessage());
+				System.out.println("\t--> SHUT_DOWN required");				
+			}
 
-	public void send() {
+			// reset flaggetConnection().addNeed(RxConnection.SHUT_DOWN);
 
-
-		/* <DEBUG> 
-		System.out.println(">>Send asked (previously: "+need+")");
-		if(need==Need.SHUT_DOWN) {
-			throw new RuntimeException("Cannot ask for sending once shut down has been requested");
+			rx_onFailed(exception);
 		}
-	 	</DEBUG> */
 
-		// update flag
-		need = Need.SEND;
-
-
-		getConnection().pullInterestOps();
-
-		// notify selector
-		getConnection().wakeup();
 	}
 
-
-
-
-	public Need getState() {
-		synchronized (lock) { return need; } 
+	/**
+	 * Thread safe
+	 */
+	public void send() {
+		getConnection().send();
 	}
+
 
 
 
 	public int getLastWriteBytecount() {
 		return nBytesWritten;
 	}
-
-
-
 
 
 }

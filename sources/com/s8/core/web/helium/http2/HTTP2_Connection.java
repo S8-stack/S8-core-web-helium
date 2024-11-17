@@ -2,6 +2,7 @@ package com.s8.core.web.helium.http2;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.web.helium.http2.frames.HTTP2_Frame;
@@ -44,8 +45,8 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 
 	private boolean isVerbose;
 
-	public HTTP2_Connection(String name, SocketChannel socketChannel, HTTP2_WebConfiguration configuration) throws IOException{
-		super(socketChannel);
+	public HTTP2_Connection(String name, SelectionKey key, SocketChannel channel, HTTP2_WebConfiguration configuration) throws IOException{
+		super(key, channel);
 		inbound = new HTTP2_Inbound(name, this, configuration);
 		outbound = new HTTP2_Outbound(name, this, configuration);
 	}
@@ -181,11 +182,11 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 
 
 
-	@Override
+	
 	public void close() {
 
 		// close SSL
-		super.close();
+		ssl_close();
 
 		if(HTTP2_isVerbose()) {
 			System.out.println("[HTTP2_Connection] A close has been notified");

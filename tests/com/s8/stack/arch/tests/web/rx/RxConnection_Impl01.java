@@ -1,6 +1,7 @@
 package com.s8.stack.arch.tests.web.rx;
 
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.web.helium.rx.RxConnection;
@@ -19,10 +20,9 @@ public class RxConnection_Impl01 extends RxConnection {
 	
 	public RxConnection_Impl01(
 			RxEndpoint endpoint,
-			SocketChannel socketChannel,
-			RxInbound_Impl01 inbound,
-			RxOutbound_Impl01 outbound) throws IOException {
-		super(socketChannel);
+			SelectionKey key, SocketChannel socketChannel,
+			RxInbound_Impl01 inbound, RxOutbound_Impl01 outbound) throws IOException {
+		super(key,  socketChannel);
 		
 		this.endpoint = endpoint;
 		this.inbound = inbound;

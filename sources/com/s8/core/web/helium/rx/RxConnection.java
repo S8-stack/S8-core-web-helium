@@ -14,54 +14,41 @@ public abstract class RxConnection {
 	public enum State {
 		NOT_INITIATED, WAITING_FOR_CONNECTION_COMPLETION, CONNECTED, CLOSING, CLOSED;
 	}
+	
 
-
-	public static class Options {
-
-	}
+	
+	/**
+	 * selection key
+	 */
+	private final SelectionKey key;
+	
+	
+	/**
+	 * the encapsulated channel
+	 */
+	private final SocketChannel socketChannel;
+	
+	
+	/**
+	 * lock for needs
+	 */
+	private final Object needLock = new Object();
+	
+	
+	private int need = 0;
+	
 
 	/**
-	 * true: is used
-	 * false : can be acquired
+	 * the key interests operations cache.
 	 */
-	private final Object lock = new Object();
-
-
-	/**
-	 * the pool this connection belongs to
-	 */
-	Pool pool;
-
-	/**
-	 * the slot
-	 */
-	long id;
-
+	int observerFilter;
+	
 
 	/**
 	 * the current state of connection
 	 */
 	State state;
 
-	/**
-	 * Keep ref of selector for waking-up
-	 */
-	//Selector selector;
-
-	/**
-	 * selection key
-	 */
-	SelectionKey key;
-
-	/**
-	 * the key interests operations cache.
-	 */
-	private int observerFilter;
-
-	/**
-	 * the encapsulated channel
-	 */
-	SocketChannel socketChannel;
 
 	// private AtomicBoolean isConnectingRequested;
 
@@ -73,7 +60,7 @@ public abstract class RxConnection {
 	/**
 	 * Rx layer verbosity
 	 */
-	private boolean isRxLayerVerbose;
+	private boolean rxIsLayerVerbose;
 
 	public abstract RxInbound getInbound();
 
@@ -84,15 +71,16 @@ public abstract class RxConnection {
 	 * @param id
 	 * @param socketChannel
 	 */
-	public RxConnection(SocketChannel socketChannel) {
+	public RxConnection(SelectionKey selectionChannel, SocketChannel socketChannel) {
 		super();
+		this.key = selectionChannel;
 		this.socketChannel = socketChannel;
+		
+		addNeed(Need.RECEIVE);
 	}
 
 
-	public long getIdentifier() {
-		return id;
-	}
+
 
 
 	public abstract RxEndpoint getEndpoint();
@@ -104,34 +92,22 @@ public abstract class RxConnection {
 	 */
 	public void Rx_initialize(RxWebConfiguration configuration) throws IOException {
 
-		this.isRxLayerVerbose = configuration.isRxVerbose;
-		if (isRxLayerVerbose) {
+		this.rxIsLayerVerbose = configuration.isRxVerbose;
+		if (rxIsLayerVerbose) {
 			System.out.println("[RxWebEnpoint] endpoint has just been created");
 		}
-
-		//this.selector = getEndpoint().getSelector();
-
-		// setup channel as NON-BLOCKING (always)
-		socketChannel.configureBlocking(false);
 
 		// configure socket
 		RxSocketConfiguration socketConfiguration = configuration.socketConfiguration;
 		if (socketConfiguration != null) {
-			socketConfiguration.setup(socketChannel.socket(), isRxLayerVerbose);
+			socketConfiguration.setup(socketChannel.socket(), rxIsLayerVerbose);
 		}
 
-		if (isRxLayerVerbose) {
+		if (rxIsLayerVerbose) {
 			RxSocketConfiguration.read(socketChannel.socket());
 		}
 
-		// no selection so far, but build key
-		//this.key = socketChannel.register(selector, 0);
-		this.key = getEndpoint().buildKey(socketChannel);
 		
-
-		// attach this connection to the key
-		key.attach(this);
-
 
 		state = socketChannel.isConnected() ? State.CONNECTED : State.NOT_INITIATED;
 
@@ -144,7 +120,7 @@ public abstract class RxConnection {
 		/**
 		 * bind bounds
 		 */
-		getInbound().Rx_bind(this);
+		getInbound().rxBind(this);
 		getOutbound().Rx_bind(this);	
 	}
 
@@ -180,25 +156,49 @@ public abstract class RxConnection {
 	 */
 	public void receive() {
 
+		/* <DEBUG> 
+
+		System.out.println(">>Receive asked (previously: "+need+")");
+		if(need==Need.SHUT_DOWN) {
+			throw new RuntimeException("Cannot ask for sending once shut down has been requested");
+		}
+		</DEBUG> */
+
 		// update flag
-		getInbound().receive();
+		addNeed(Need.RECEIVE);
+
+		// notify selector
+		getEndpoint().keySelectorWakeup();
 	}
 
 	public void send() {
+		/* <DEBUG> 
+		System.out.println(">>Send asked (previously: "+need+")");
+		if(need==Need.SHUT_DOWN) {
+			throw new RuntimeException("Cannot ask for sending once shut down has been requested");
+		}
+	 	</DEBUG> */
 
-		// setup out-bound to switch back into send mode
-		getOutbound().send();
+		// update flag
+		addNeed(Need.SEND);
+	
+		// notify selector
+		getEndpoint().keySelectorWakeup();
 
 	}
 
-	/**
-	 * Not thread safe
-	 */
-	public void close() {
-		state = State.CLOSING;
+	
+	public void addNeed(int code) {
+		synchronized (needLock) { need |= code; }
+	}
+	
+	public void clearNeed(int code) {
+		synchronized (needLock) { need &= ~code; }
 	}
 
-
+	public boolean hasNeed(int code) {
+		synchronized (needLock) { return (need & code) == code; }
+	}
 
 
 	/**
@@ -214,183 +214,165 @@ public abstract class RxConnection {
 		getEndpoint().keySelectorWakeup();
 	}
 
+	
+	
 
+	/* <connection-processing> */
+	
 	/**
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
+	 * MUST only be called by the endpoint
 	 * Update interest set
 	 */
-	public void pullInterestOps() {
+	void updateInterestOps() {
 
 
+		if(socketChannel.isOpen()) {
 
+			int ops = 0;
+			switch(state) {
 
-		/**
-		 * Concurrency is handled at this point: if the connection is busy, we skid this
-		 * step (knowing that it will be call back soon). Note that, if it is never callback
-		 */
-		synchronized (lock) {
+			case WAITING_FOR_CONNECTION_COMPLETION:
 
-			if(socketChannel.isOpen()) {
+				/* <update-observed> */
+				ops |= SelectionKey.OP_CONNECT;
 
-				int ops = 0;
-				switch(state) {
+				break;
 
-				case WAITING_FOR_CONNECTION_COMPLETION:
+			case CONNECTED :
 
-					/* <update-observed> */
-					ops |= SelectionKey.OP_CONNECT;
+				if(hasNeed(Need.RECEIVE)) { ops |= SelectionKey.OP_READ; }
 
-					break;
+				if(hasNeed(Need.SEND)) { ops |= SelectionKey.OP_WRITE; }
+				
+				break;
 
-				case CONNECTED :
-
-					if(getInbound().getState() == RxInbound.Need.RECEIVE) {
-						ops |= SelectionKey.OP_READ;
-					}
-
-					if(getOutbound().getState() == RxOutbound.Need.SEND) {
-						ops |= SelectionKey.OP_WRITE;
-					}
-					break;
-
-				case NOT_INITIATED:
-				case CLOSING:
-				case CLOSED : 
-					// no interest ops
-					break;
-				}
-
-				// if filter has been updated
-				if (ops != observerFilter) {
-
-					// update cache
-					observerFilter = ops;
-
-					// update key
-					key.interestOps(observerFilter);
-				}
-				/* </update-observed> */
-
+			case NOT_INITIATED:
+			case CLOSING :
+			case CLOSED : 
+				// no interest ops
+				break;
 			}
-			else {
 
-				/*
-				 * No reason to observe anything else now
-				 */
-				key.interestOps(0);
+			// if filter has been updated
+			if (ops != observerFilter) {
 
-				/*
-				 * Initiate closing sequence
-				 */
-				state = State.CLOSING;
+				// update cache
+				observerFilter = ops;
+
+				// update key
+				key.interestOps(observerFilter);
 			}
-		} /* </synchronized> */
+			/* </update-observed> */
 
+		}
+		else {
 
+			/*
+			 * No reason to observe anything else now
+			 */
+			key.interestOps(0);
+
+			/*
+			 * Initiate closing sequence
+			 */
+			state = State.CLOSING;
+		}
 	}
 
 
 	/**
 	 * exploit ready set
 	 */
-	public void pushReadyOps() {
-		/**
-		 * Concurrency is handled at this point: if the connection is busy, we skip this
-		 * step (knowing that it will be call back soon). Note that, in most case, only one operation at a time on
-		 * a single connection (HTTP2 is per stream, multiplexed and continuous flow).
-		 */
-		synchronized(lock) {
+	void processReadyOps() {
+		try {
+			// Duplicate security line
+			if(key.isValid()) {
 
-			try {
-				// Duplicate security line
-				if(key.isValid()) {
+				switch(state) {
 
-					switch(state) {
+				case NOT_INITIATED : // idle, do nothing
+					break;
 
-					case NOT_INITIATED : // idle, do nothing
-						break;
-
-					case WAITING_FOR_CONNECTION_COMPLETION :
+				case WAITING_FOR_CONNECTION_COMPLETION :
 
 
-						// filter OP_CONNECT
-						if (key.isConnectable() && socketChannel.isConnectionPending()) {
+					// filter OP_CONNECT
+					if (key.isConnectable() && socketChannel.isConnectionPending()) {
 
-							// try to finish connection
-							boolean isNowConnected = socketChannel.finishConnect();
+						// try to finish connection
+						boolean isNowConnected = socketChannel.finishConnect();
 
-							// stop requesting connection if now connected, continue otherwise
-							if(isNowConnected) {
-								state = State.CONNECTED;
-							}
-						}
-						break;
-
-					case CONNECTED :
-
-						// filter OP_READ
-						if (key.isReadable()) {
-							RxInbound.Need result = getInbound().read();
-							if(result == RxInbound.Need.SHUT_DOWN) {
-								// close connection
-								this.state = State.CLOSING;
-							}
-						}
-
-						// filter OP_WRITE
-						if (key.isWritable()) {
-							RxOutbound.Need result = getOutbound().write();
-							if(result == RxOutbound.Need.SHUT_DOWN) {
-								// close connection
-								this.state = State.CLOSING;
-							}
-						}
-
-						break;
-
-					case CLOSING :
-
-						// close underlying channel
-						try {
-							socketChannel.close();			
-						}
-						catch (IOException exception) {
-							exception.printStackTrace();
-						}
-
-						// Requests that the registration of this key's channel with its selector be cancelled.
-						key.cancel();
-
-						// detach from end-points list
-						pool.remove(id);
-
-						// switch state
-						state = State.CLOSED;
-						break;
-
-					case CLOSED:
-						// idle, nothing to do
-						break;
+						// stop requesting connection if now connected, continue otherwise
+						if(isNowConnected) { state = State.CONNECTED; }
 					}
+					break;
+
+				case CONNECTED :
+
+					// filter OP_READ
+					if (key.isReadable()) { getInbound().read(); }
+
+					// filter OP_WRITE
+					if (key.isWritable()) { getOutbound().write(); }
+
+					break;
+
+				case CLOSING: 
+					rx_close();
+					break;
+
+				case CLOSED:
+					// idle, nothing to do
+					break;
 				}
 			}
-			catch (IOException exception) {
+		}
+		catch (IOException exception) {
 
-				// try to re-launch, so don't stop
-				//
-				if(isRxLayerVerbose) {
-					System.out.println("[RxConnection]: connection push has encountered an error: "+exception.getMessage());
-					System.out.println("[RxConnection]: SKIPPED and continued");	
-				}
-
-				// close connection
-				state = State.CLOSING;
+			// try to re-launch, so don't stop
+			//
+			if(rxIsLayerVerbose) {
+				System.out.println("[RxConnection]: connection push has encountered an error: "+exception.getMessage());
+				System.out.println("[RxConnection]: SKIPPED and continued");	
 			}
 
-
-		} /* </synchronized> */
-
+			// close connection
+			rx_close();
+		}
+		
+		
+		/**
+		 * If a shut down has been initiated, then close
+		 */
+		if(hasNeed(Need.SHUT_DOWN)) { rx_close(); }
 	}
 
 	// public abstract void RX_onClosed();
+	
+	
+	
+	
+	protected void rx_close() {
+		// close underlying channel
+		try {
+			socketChannel.close();			
+		}
+		catch (IOException exception) {
+			exception.printStackTrace();
+		}
+
+		// Requests that the registration of this key's channel with its selector be cancelled.
+		key.cancel();
+		
+
+		state = State.CLOSED;
+	}
+	
+	
+	/* </connection-processing> */
+
+	
 
 }

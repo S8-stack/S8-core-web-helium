@@ -20,7 +20,7 @@ public abstract class RxInbound_Impl01 extends RxInbound {
 	public RxInbound_Impl01(String name, RxWebConfiguration configuration) {
 		super(name, configuration);
 		
-		initializeNetworkBuffer(NETWORK_INPUT_STARTING_CAPACITY);
+		rxInitializeNetworkBuffer(NETWORK_INPUT_STARTING_CAPACITY);
 	}
 
 
@@ -30,10 +30,10 @@ public abstract class RxInbound_Impl01 extends RxInbound {
 	}
 
 	@Override
-	public void onRxRemotelyClosed() {
+	public void rx_onRemotelyClosed() {
 	}
 
 	@Override
-	public void onRxReceptionFailed(IOException exception) {
+	public void rx_onReceptionFailed(IOException exception) {
 	}
 }

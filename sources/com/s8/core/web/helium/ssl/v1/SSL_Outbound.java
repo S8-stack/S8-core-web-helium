@@ -90,23 +90,23 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 	@Override
-	public void onPreRxSending() throws IOException {
+	public void rx_onPreSending() throws IOException {
 		ssl_launchWrap();
 	}
 
 	@Override
-	public void onPostRxSending(int nBytesWritten) throws IOException {
+	public void rx_onPostSending(int nBytesWritten) throws IOException {
 		ssl_launchWrap();
 	}
 
 	@Override
-	public void onRxRemotelyClosed() {
+	public void rx_onRemotelyClosed() {
 		getConnection().isClosed = true;
 		close();
 	}
 
 	@Override
-	public void onRxFailed(IOException exception) {
+	public void rx_onFailed(IOException exception) {
 		if(SSL_isVerbose) {
 			exception.printStackTrace();
 		}

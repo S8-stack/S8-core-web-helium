@@ -85,19 +85,19 @@ public abstract class SSL_Inbound extends RxInbound {
 
 
 	@Override
-	public void onRxReceived() throws IOException {
+	public void rx_onReceived() throws IOException {
 		ssl_launchUnwrap();
 	}
 
 	@Override
-	public void onRxRemotelyClosed() throws IOException {
+	public void rx_onRemotelyClosed() throws IOException {
 		getConnection().isClosed = true;
 		close();
 	}
 
 
 	@Override
-	public void onRxReceptionFailed(IOException exception) throws IOException {
+	public void rx_onReceptionFailed(IOException exception) throws IOException {
 		getConnection().isClosed = true;
 		close();
 	}
@@ -117,7 +117,7 @@ public abstract class SSL_Inbound extends RxInbound {
 		this.engine = connection.ssl_getEngine();
 		this.outbound = connection.getOutbound();
 
-		initializeNetworkBuffer(engine.getSession().getPacketBufferSize());
+		rxInitializeNetworkBuffer(engine.getSession().getPacketBufferSize());
 		initializeApplicationBuffer(engine.getSession().getApplicationBufferSize());
 
 	}
@@ -498,7 +498,7 @@ public abstract class SSL_Inbound extends RxInbound {
 
 			while(nc < sc) { nc*=2; }
 
-			increaseNetworkBufferCapacity(nc);
+			rxIncreaseNetworkBufferCapacity(nc);
 
 			return false;
 		}
@@ -512,7 +512,7 @@ public abstract class SSL_Inbound extends RxInbound {
 		else {
 			/* new capacity first guess */
 			int nc = 2 * networkBuffer.capacity();
-			increaseNetworkBufferCapacity(nc);
+			rxIncreaseNetworkBufferCapacity(nc);
 
 			return false;
 		}	

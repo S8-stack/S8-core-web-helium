@@ -30,15 +30,15 @@ public abstract class RxOutbound_Impl01 extends RxOutbound {
 	}
 	
 	@Override
-	public void onRxRemotelyClosed() {
+	public void rx_onRemotelyClosed() {
 	}
 
 	@Override
-	public void onRxFailed(IOException exception) {
+	public void rx_onFailed(IOException exception) {
 	}
 
 	@Override
-	public void onPostRxSending(int nBytesWritten) throws IOException {
+	public void rx_onPostSending(int nBytesWritten) throws IOException {
 	}
 
 }

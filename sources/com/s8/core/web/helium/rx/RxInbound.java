@@ -21,20 +21,14 @@ public abstract class RxInbound {
 
 
 
-	public enum Need {
-
-		NONE, RECEIVE, SHUT_DOWN;
-
-	}
 
 
 	public final String name;
 
 
-	private final Object lock = new Object();
-
 	/**
-	 * /**
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * <p>
 	 * <b>Important notice</b>: ByteBuffer buffer (as retrieved by
 	 * <code>getNetworkBuffer()</code> method) is passed in write mode state.
@@ -44,40 +38,30 @@ public abstract class RxInbound {
 	 * @param resizer a handler to trigger resizing
 	 * @throws IOException 
 	 */
-	public abstract void onRxReceived() throws IOException;
+	protected abstract void rx_onReceived() throws IOException;
 
 
 	/**
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
 	 * 
 	 * @throws IOException
 	 */
-	public abstract void onRxRemotelyClosed() throws IOException;
+	protected abstract void rx_onRemotelyClosed() throws IOException;
 
 
-	public abstract void onRxReceptionFailed(IOException exception) throws IOException;
+	/**
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
+	 * @param exception
+	 * @throws IOException
+	 */
+	protected abstract void rx_onReceptionFailed(IOException exception) throws IOException;
 
 	/**
 	 * the channel
 	 */
 	SocketChannel socketChannel;
 
-	/**
-	 * trigger receiving
-	 * <p>
-	 * <b>Note</b>: The specifications of these methods enable implementations to employ
-	 * efficient machine-level atomic instructions that are available on
-	 * contemporary processors. However on some platforms, support may entail some
-	 * form of internal locking. Thus the methods are not strictly guaranteed to be
-	 * non-blocking -- a thread may block transiently before performing the
-	 * operation.
-	 * </p>
-	 * <p>Cycle is the following:</p>
-	 * <ul>
-	 * <li>Set to <code>true</code> by <code>receive()</code> method</li>
-	 * <li>Reset or continued when calling <code>onReceived()</code> method, using output flag</li>
-	 * </ul>
-	 */
-	private Need need;
 
 
 
@@ -100,11 +84,9 @@ public abstract class RxInbound {
 	public RxInbound(String name, RxWebConfiguration configuration) {
 		super();
 		this.name = name + ".inbound";
-		need = Need.NONE;
 
+	
 		this.Rx_isVerbose = configuration.isRxVerbose;
-
-
 	}
 
 
@@ -113,6 +95,9 @@ public abstract class RxInbound {
 
 
 	/**
+	 * 
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * Compares <code>sessionProposedCapacity<code> with buffer's capacity. If buffer's capacity is smaller,
 	 * returns a buffer with the proposed capacity. If it's equal or larger, returns a buffer
 	 * with capacity twice the size of the initial one.
@@ -121,23 +106,21 @@ public abstract class RxInbound {
 	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
 	 * @return A new buffer with a larger capacity.
 	 */
-	public void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
+	protected void rxIncreaseNetworkBufferCapacity(int sessionProposedCapacity) {
 
-		synchronized (lock) {
-			/* allocate new buffer */
-			ByteBuffer extendedBuffer = ByteBuffer.allocate(
-					sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
-						networkBuffer.capacity() * 2);
+		/* allocate new buffer */
+		ByteBuffer extendedBuffer = ByteBuffer.allocate(
+				sessionProposedCapacity > networkBuffer.capacity() ? sessionProposedCapacity : 
+					networkBuffer.capacity() * 2);
 
-			/* copy remaining content */
-			extendedBuffer.put(networkBuffer);
+		/* copy remaining content */
+		extendedBuffer.put(networkBuffer);
 
-			/* replace */
-			networkBuffer = extendedBuffer;
+		/* replace */
+		networkBuffer = extendedBuffer;
 
-			/* network buffer is now in READ mode */
-			networkBuffer.flip();	
-		}
+		/* network buffer is now in READ mode */
+		networkBuffer.flip();
 	}
 
 
@@ -145,10 +128,8 @@ public abstract class RxInbound {
 	 * 
 	 * @param connection
 	 */
-	public void Rx_bind(RxConnection connection) {
+	public void rxBind(RxConnection connection) {
 		this.socketChannel = connection.getSocketChannel();
-
-
 	}
 
 
@@ -156,107 +137,77 @@ public abstract class RxInbound {
 	 * 
 	 * @param capacity
 	 */
-	public void initializeNetworkBuffer(int capacity) {
-		synchronized (lock) {
-			// set buffer so that first compact left it ready for writing
-			networkBuffer = ByteBuffer.allocate(capacity);
-			networkBuffer.position(0);
-			networkBuffer.limit(0);	
-		}
+	public void rxInitializeNetworkBuffer(int capacity) {
+		// set buffer so that first compact left it ready for writing
+		networkBuffer = ByteBuffer.allocate(capacity);
+		networkBuffer.position(0);
+		networkBuffer.limit(0);
 	}
-
-
-
-
-	public Need getState() {
-		synchronized (lock) { return need; }
-	}
-
-
 
 
 
 
 	/**
+	 * Thread safe
+	 * 
 	 * @throws IOException 
 	 */
 	public void receive() {
-
-
-
-		/* <DEBUG> 
-
-		System.out.println(">>Receive asked (previously: "+need+")");
-		if(need==Need.SHUT_DOWN) {
-			throw new RuntimeException("Cannot ask for sending once shut down has been requested");
-		}
-		</DEBUG> */
-
-		// update flag
-		synchronized (lock) { need = Need.RECEIVE; }
-
-		getConnection().pullInterestOps();
-
-		// notify selector
-		getConnection().wakeup();
+		getConnection().receive();
 	}
 
 
 	/**
 	 * 
+	 * /!\ ENDPOINT OPERATED, for thread safety reasons
+	 * 
 	 * @return false if inbound has not terminated during read attempt, true otherwise
 	 * @throws IOException 
 	 */
-	public Need read() throws IOException {
-		synchronized (lock) { /* <sync:low-contention> */
+	void read() throws IOException {
 
+		try {
+			if(getConnection().hasNeed(Need.RECEIVE)) {
 
-			try {
+				/* buffer WRITE_MODE start of section */
+				// optimize inbound buffer free space
+				networkBuffer.compact();
 
-				if(need==Need.RECEIVE) {
+				// read
+				nBytes = socketChannel.read(networkBuffer);
 
-
-
-					/* buffer WRITE_MODE start of section */
-					// optimize inbound buffer free space
-					networkBuffer.compact();
-
-					// read
-					nBytes = socketChannel.read(networkBuffer);
-
-					if(nBytes==-1) {
-						onRxRemotelyClosed();
-					}
-
-					// flip
-					networkBuffer.flip();
-					/* buffer WRITE_MODE end of section */
-
-					// trigger callback function with buffer ready for reading
-					if(nBytes > 0) { 
-
-						/* clear need, wait for upper layer ot decide if we need more recieve */
-						need = Need.NONE;
-
-						/* transmit to upper layer*/
-						onRxReceived(); 
-					}
-				}
-			}
-			catch(IOException exception) {
-
-				if(Rx_isVerbose) {
-					System.out.println("[RxInbound] read encounters an exception: "+exception.getMessage());
-					System.out.println("\t --> require SHUT_DOWN");
+				if(nBytes==-1) {
+					rx_onRemotelyClosed();
 				}
 
-				onRxReceptionFailed(exception);
+				// flip
+				networkBuffer.flip();
+				/* buffer WRITE_MODE end of section */
 
-				need = Need.SHUT_DOWN;
+				// trigger callback function with buffer ready for reading
+				if(nBytes > 0) { 
+
+					/* clear need, wait for upper layer ot decide if we need more recieve */
+					getConnection().clearNeed(Need.RECEIVE);
+
+					/* transmit to upper layer*/
+					rx_onReceived(); 
+				}
+
+			}
+		}
+		catch(IOException exception) {
+
+			if(Rx_isVerbose) {
+				System.out.println("[RxInbound] read encounters an exception: "+exception.getMessage());
+				System.out.println("\t --> require SHUT_DOWN");
 			}
 
-			return need;
-		} /* </synchronized> */
+			rx_onReceptionFailed(exception);
+
+			/* exception -> requires shut-down */
+			getConnection().clearNeed(Need.SHUT_DOWN);
+		}
 	};
 
 
