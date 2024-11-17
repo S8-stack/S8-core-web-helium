@@ -37,7 +37,7 @@ public abstract class RxClient implements RxEndpoint {
 	
 
 
-	public abstract RxConnection rx_createConnection(SelectionKey selectionKey, SocketChannel socketChannel) throws IOException;
+	public abstract RxConnection createConnection(SelectionKey selectionKey, SocketChannel socketChannel) throws IOException;
 
 
 	@Override
@@ -65,7 +65,7 @@ public abstract class RxClient implements RxEndpoint {
 		// no selection so far, but build key
 		SelectionKey selectionKey = socketChannel.register(selector, 0);
 
-		connection = rx_createConnection(selectionKey, socketChannel);
+		connection = createConnection(selectionKey, socketChannel);
 
 		if(!isEstablished) {
 			connection.connect();			

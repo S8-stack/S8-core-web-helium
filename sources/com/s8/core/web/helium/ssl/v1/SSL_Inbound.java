@@ -532,7 +532,7 @@ public abstract class SSL_Inbound extends RxInbound {
 
 		engine.closeOutbound();
 
-		getConnection().close();
+		getConnection().ssl_close();
 	}
 
 

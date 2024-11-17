@@ -68,7 +68,7 @@ public abstract class RxServer implements RxEndpoint {
 	 * @return
 	 * @throws IOException
 	 */
-	public abstract RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException;
+	public abstract RxConnection createConnection(SelectionKey key, SocketChannel channel) throws IOException;
 
 
 
@@ -218,7 +218,7 @@ public abstract class RxServer implements RxEndpoint {
 				SelectionKey selectionKey = socketChannel.register(selector, 0);
 
 				/* create connection */
-				RxConnection connection = rx_createConnection(selectionKey, socketChannel);				
+				RxConnection connection = createConnection(selectionKey, socketChannel);				
 
 				/* attach this connection to the key */
 				selectionKey.attach(connection);

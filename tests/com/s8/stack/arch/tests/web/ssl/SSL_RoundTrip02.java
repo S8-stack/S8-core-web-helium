@@ -31,7 +31,7 @@ public class SSL_RoundTrip02 {
 		SSL_Server server = new SSL_Server() {
 
 			@Override
-			public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+			public RxConnection createConnection(SelectionKey key, SocketChannel channel) throws IOException {
 
 				return new SSL_Connection_Impl02(this, key, channel, 
 						new SSL_Inbound_Impl02("server", serverConfig) {
@@ -77,7 +77,7 @@ public class SSL_RoundTrip02 {
 		SSL_Client client = new SSL_Client() {
 
 			@Override
-			public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+			public RxConnection createConnection(SelectionKey key, SocketChannel channel) throws IOException {
 				return new SSL_Connection_Impl02(this, key, channel, 
 						new SSL_Inbound_Impl02("client", clientConfig) {
 

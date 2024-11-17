@@ -33,7 +33,7 @@ public class TestRx04 {
 			}
 
 			@Override
-			public RxConnection rx_createConnection(SelectionKey key, SocketChannel socketChannel) throws IOException {
+			public RxConnection createConnection(SelectionKey key, SocketChannel socketChannel) throws IOException {
 
 				return new RxConnection_Impl01(this, key, socketChannel,
 						new RxInbound_Impl01("server", webConfig) {
@@ -134,7 +134,7 @@ public class TestRx04 {
 		}
 
 		@Override
-		public RxConnection rx_createConnection(SelectionKey key, SocketChannel socketChannel) throws IOException {
+		public RxConnection createConnection(SelectionKey key, SocketChannel socketChannel) throws IOException {
 			return new RxConnection_Impl01(this, key, socketChannel, 
 					new RxInbound_Impl01("client", config) {
 

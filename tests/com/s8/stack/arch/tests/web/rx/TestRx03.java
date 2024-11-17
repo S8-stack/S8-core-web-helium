@@ -38,7 +38,7 @@ public class TestRx03 {
 			}
 
 			@Override
-			public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+			public RxConnection createConnection(SelectionKey key, SocketChannel channel) throws IOException {
 
 				return new RxConnection_Impl01(this, key, channel, 
 						new RxInbound_Impl01("server", serverConfig) {
@@ -119,7 +119,7 @@ public class TestRx03 {
 		public @Override SiliconEngine getSiliconEngine() { return ng; }
 
 		@Override
-		public RxConnection rx_createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+		public RxConnection createConnection(SelectionKey key, SocketChannel channel) throws IOException {
 			return new RxConnection_Impl01(this, key, channel, 
 					new RxInbound_Impl01("client", config) {
 

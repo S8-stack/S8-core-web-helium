@@ -584,6 +584,8 @@ public abstract class SSL_Outbound extends RxOutbound {
 			 */
 			flush();
 
+			
+			getConnection().ssl_close();
 
 
 		}
