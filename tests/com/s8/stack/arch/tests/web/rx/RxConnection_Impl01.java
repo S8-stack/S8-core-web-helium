@@ -55,6 +55,6 @@ public class RxConnection_Impl01 extends RxConnection {
 
 	@Override
 	public void close() {
-		rx_close();
+		rx_initiateClosing();
 	}
 }

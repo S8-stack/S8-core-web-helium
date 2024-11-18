@@ -210,7 +210,8 @@ public abstract class RxOutbound {
 			if(rx_isVerbose) {
 				System.out.println("[RxOutbound] write encounters an exception:");
 				System.out.println("\t"+exception.getMessage());
-				System.out.println("\t--> SHUT_DOWN required");				
+				System.out.println("\t--> SHUT_DOWN required");		
+				exception.printStackTrace();
 			}
 
 			// reset flaggetConnection().addNeed(RxConnection.SHUT_DOWN);

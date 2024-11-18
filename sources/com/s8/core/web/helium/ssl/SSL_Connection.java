@@ -206,7 +206,7 @@ public abstract class SSL_Connection extends RxConnection {
 
 	
 	public void ssl_close() {
-		rx_close();
+		rx_initiateClosing();
 		isClosed = true;
 	}
 

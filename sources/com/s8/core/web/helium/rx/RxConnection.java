@@ -14,35 +14,35 @@ public abstract class RxConnection {
 	public enum State {
 		NOT_INITIATED, WAITING_FOR_CONNECTION_COMPLETION, CONNECTED, CLOSING, CLOSED;
 	}
-	
 
-	
+
+
 	/**
 	 * selection key
 	 */
 	private final SelectionKey key;
-	
-	
+
+
 	/**
 	 * the encapsulated channel
 	 */
 	private final SocketChannel socketChannel;
-	
-	
+
+
 	/**
 	 * lock for needs
 	 */
 	private final Object needLock = new Object();
-	
-	
+
+
 	private int need = 0;
-	
+
 
 	/**
 	 * the key interests operations cache.
 	 */
 	int observerFilter;
-	
+
 
 	/**
 	 * the current state of connection
@@ -75,7 +75,7 @@ public abstract class RxConnection {
 		super();
 		this.key = selectionChannel;
 		this.socketChannel = socketChannel;
-		
+
 		addNeed(Need.RECEIVE);
 	}
 
@@ -107,7 +107,7 @@ public abstract class RxConnection {
 			RxSocketConfiguration.read(socketChannel.socket());
 		}
 
-		
+
 
 		state = socketChannel.isConnected() ? State.CONNECTED : State.NOT_INITIATED;
 
@@ -171,6 +171,7 @@ public abstract class RxConnection {
 		getEndpoint().keySelectorWakeup();
 	}
 
+
 	public void send() {
 		/* <DEBUG> 
 		System.out.println(">>Send asked (previously: "+need+")");
@@ -181,18 +182,18 @@ public abstract class RxConnection {
 
 		// update flag
 		addNeed(Need.SEND);
-	
+
 		// notify selector
 		getEndpoint().keySelectorWakeup();
 
 	}
 
 	public abstract void close();
-	
+
 	public void addNeed(int code) {
 		synchronized (needLock) { need |= code; }
 	}
-	
+
 	public void clearNeed(int code) {
 		synchronized (needLock) { need &= ~code; }
 	}
@@ -215,11 +216,11 @@ public abstract class RxConnection {
 		getEndpoint().keySelectorWakeup();
 	}
 
-	
-	
+
+
 
 	/* <connection-processing> */
-	
+
 	/**
 	 * /!\ ENDPOINT OPERATED, for thread safety reasons
 	 * 
@@ -246,7 +247,7 @@ public abstract class RxConnection {
 				if(hasNeed(Need.RECEIVE)) { ops |= SelectionKey.OP_READ; }
 
 				if(hasNeed(Need.SEND)) { ops |= SelectionKey.OP_WRITE; }
-				
+
 				break;
 
 			case NOT_INITIATED:
@@ -320,8 +321,7 @@ public abstract class RxConnection {
 
 					break;
 
-				case CLOSING: 
-					rx_close();
+				case CLOSING: handleClosing();
 					break;
 
 				case CLOSED:
@@ -340,22 +340,20 @@ public abstract class RxConnection {
 			}
 
 			// close connection
-			rx_close();
+			rx_initiateClosing();
 		}
-		
-		
+
+
 		/**
 		 * If a shut down has been initiated, then close
 		 */
-		if(hasNeed(Need.SHUT_DOWN)) { rx_close(); }
+		if(hasNeed(Need.SHUT_DOWN)) { rx_initiateClosing(); }
 	}
 
 	// public abstract void RX_onClosed();
-	
-	
-	
-	
-	protected void rx_close() {
+
+
+	private void handleClosing() {
 		// close underlying channel
 		try {
 			socketChannel.close();	
@@ -367,13 +365,18 @@ public abstract class RxConnection {
 		// Requests that the registration of this key's channel with its selector be cancelled.
 		key.cancel();
 		
-
 		state = State.CLOSED;
 	}
-	
-	
-	/* </connection-processing> */
 
 	
+	protected void rx_initiateClosing() {
+
+		state = State.CLOSING;
+	}
+
+
+	/* </connection-processing> */
+
+
 
 }

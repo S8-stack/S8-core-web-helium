@@ -54,6 +54,6 @@ public abstract class HTTP1_Connection extends RxConnection {
 	
 	@Override
 	public void close() {
-		rx_close();
+		rx_initiateClosing();
 	}
 }
