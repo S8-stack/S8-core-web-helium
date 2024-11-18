@@ -4,10 +4,10 @@ import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
-import com.s8.core.web.helium.ssl.v1.SSL_Connection;
-import com.s8.core.web.helium.ssl.v1.SSL_Endpoint;
-import com.s8.core.web.helium.ssl.v1.SSL_Inbound;
-import com.s8.core.web.helium.ssl.v1.SSL_Outbound;
+import com.s8.core.web.helium.ssl.SSL_Connection;
+import com.s8.core.web.helium.ssl.SSL_Endpoint;
+import com.s8.core.web.helium.ssl.SSL_Inbound;
+import com.s8.core.web.helium.ssl.SSL_Outbound;
 
 public class SSL_Connection_Impl02 extends SSL_Connection {
 
@@ -53,6 +53,12 @@ public class SSL_Connection_Impl02 extends SSL_Connection {
 	@Override
 	public SSL_Endpoint getEndpoint() {
 		return endpoint;
+	}
+
+
+	@Override
+	public void close() {
+		ssl_close();
 	}
 
 }

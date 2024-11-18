@@ -1,6 +1,7 @@
 package com.s8.stack.arch.tests.web.http1;
 
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.arch.silicon.SiliconConfiguration;
@@ -36,8 +37,8 @@ public class HTTP1_HelloWorld {
 		}
 
 		@Override
-		public HTTP1_Connection open(SocketChannel socketChannel) throws IOException {
-			HTTP1_Connection connection = new H1Connection(socketChannel, this);
+		public HTTP1_Connection createConnection(SelectionKey key, SocketChannel channel) throws IOException {
+			HTTP1_Connection connection = new H1Connection(key, channel, this);
 			connection.Rx_initialize(config);
 			return connection;
 		}
@@ -55,8 +56,8 @@ public class HTTP1_HelloWorld {
 	
 	public static class H1Connection extends HTTP1_Connection {
 
-		public H1Connection(SocketChannel socketChannel, HTTP1_Endpoint endpoint) throws IOException {
-			super(socketChannel, endpoint);
+		public H1Connection(SelectionKey key, SocketChannel channel, HTTP1_Endpoint endpoint) throws IOException {
+			super(key, channel, endpoint);
 		}
 
 		@Override

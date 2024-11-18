@@ -37,7 +37,7 @@ public class HTTP1_Inbound extends RxInbound {
 
 
 	@Override
-	public void onRxReceived() {
+	public void rx_onReceived() {
 		boolean isReceiving = true;
 		while(isReceiving) {
 			
@@ -72,13 +72,13 @@ public class HTTP1_Inbound extends RxInbound {
 
 
 	@Override
-	public void onRxRemotelyClosed() {
+	public void rx_onRemotelyClosed() {
 		connection.close();
 	}
 
 
 	@Override
-	public void onRxReceptionFailed(IOException exception) {
+	public void rx_onReceptionFailed(IOException exception) {
 		connection.close();
 	}
 

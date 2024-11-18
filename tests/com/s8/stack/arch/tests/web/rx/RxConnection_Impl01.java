@@ -51,4 +51,10 @@ public class RxConnection_Impl01 extends RxConnection {
 	public RxOutbound getOutbound() {
 		return outbound;
 	}
+
+
+	@Override
+	public void close() {
+		rx_close();
+	}
 }

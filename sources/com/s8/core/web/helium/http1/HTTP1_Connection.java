@@ -1,6 +1,7 @@
 package com.s8.core.web.helium.http1;
 
 import java.io.IOException;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 import com.s8.core.web.helium.http1.messages.HTTP1_Request;
@@ -20,8 +21,8 @@ public abstract class HTTP1_Connection extends RxConnection {
 	
 	private HTTP1_Endpoint endpoint;
 	
-	public HTTP1_Connection(SocketChannel socketChannel, HTTP1_Endpoint endpoint) throws IOException {
-		super(socketChannel);
+	public HTTP1_Connection(SelectionKey key, SocketChannel channel, HTTP1_Endpoint endpoint) throws IOException {
+		super(key, channel);
 		this.endpoint = endpoint;
 		inbound = new HTTP1_Inbound("server", this, endpoint.getWebConfiguration());
 		outbound = new HTTP1_Outbound("server", this, endpoint.getWebConfiguration());
@@ -51,4 +52,8 @@ public abstract class HTTP1_Connection extends RxConnection {
 		send();
 	}
 	
+	@Override
+	public void close() {
+		rx_close();
+	}
 }

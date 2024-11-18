@@ -1,4 +1,4 @@
-package com.s8.core.web.helium.ssl.v1;
+package com.s8.core.web.helium.ssl;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

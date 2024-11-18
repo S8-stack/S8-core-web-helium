@@ -187,6 +187,7 @@ public abstract class RxConnection {
 
 	}
 
+	public abstract void close();
 	
 	public void addNeed(int code) {
 		synchronized (needLock) { need |= code; }
