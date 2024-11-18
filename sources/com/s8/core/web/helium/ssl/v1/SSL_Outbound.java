@@ -492,7 +492,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 			while(nc < sc) { nc*=2; }
 
-			increaseNetwordBufferCapacity(nc);
+			increaseNetworkBufferCapacity(nc);
 
 			return false; /* no sending required */
 		}
@@ -634,7 +634,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 			applicationBuffer.flip();
 
 			/* copy remaining content */
-			extendedBuffer.put(applicationBuffer);
+			//extendedBuffer.put(applicationBuffer);
 
 			/* replace (application buffer is in WRITE mode) */
 			applicationBuffer = extendedBuffer;

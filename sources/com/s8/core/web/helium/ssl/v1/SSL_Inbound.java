@@ -155,7 +155,7 @@ public abstract class SSL_Inbound extends RxInbound {
 
 		/* /!\ since endPoint.onReceived read ALL data, nothing left, so clear
 			application input buffer -> READ */
-		applicationBuffer.clear();	
+		//applicationBuffer.clear();	
 	}
 
 
@@ -463,8 +463,8 @@ public abstract class SSL_Inbound extends RxInbound {
 			increaseApplicationBufferCapacity(nc);
 		}
 		/* application buffer is likely to be filled, so drain */
-		else if(applicationBuffer.position() > applicationBuffer.capacity()) {
-
+		else if(applicationBuffer.position() > applicationBuffer.capacity() / 2) {
+			if(SSL_isVerbose) { System.out.print("[SSL_Inbound] skip application buffer capacity increase: too empty"); }
 			/* should be drained by next unwrap call */
 		}
 		/* ... try to increase application buffer capacity, because no other apparent reasons */
@@ -557,12 +557,13 @@ public abstract class SSL_Inbound extends RxInbound {
 			ByteBuffer extendedBuffer = ByteBuffer.allocate(capacity);
 
 			/* copy remaining content */
-			extendedBuffer.put(applicationBuffer);
-
+			//extendedBuffer.put(applicationBuffer);
+			// TODO
+			
 			/* replace */
 			applicationBuffer = extendedBuffer;
 
-			/* network buffer is now in READ mode */
+			/* buffer is now in READ mode */
 			applicationBuffer.flip();		
 		}
 	}

@@ -357,7 +357,7 @@ public abstract class RxConnection {
 	protected void rx_close() {
 		// close underlying channel
 		try {
-			socketChannel.close();			
+			socketChannel.close();	
 		}
 		catch (IOException exception) {
 			exception.printStackTrace();

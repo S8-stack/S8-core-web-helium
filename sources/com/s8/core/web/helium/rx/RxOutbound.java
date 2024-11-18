@@ -83,7 +83,7 @@ public abstract class RxOutbound {
 	 * @param sessionProposedCapacity - the minimum size of the new buffer, proposed by {@link SSLSession}.
 	 * @return A new buffer with a larger capacity.
 	 */
-	protected void increaseNetwordBufferCapacity(int sessionProposedCapacity) {
+	protected void increaseNetworkBufferCapacity(int sessionProposedCapacity) {
 
 		if(sessionProposedCapacity > networkBuffer.capacity()) {
 
