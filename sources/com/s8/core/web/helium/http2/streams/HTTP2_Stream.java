@@ -206,11 +206,25 @@ public class HTTP2_Stream {
 		/* </headers> */
 
 		/* <payload> */
+		
+		
+		
+		
 		HTTP2_Settings settings = endpoint.getSettings();
 		LinkedBytes fragment = message.getDataFragmentHead();
 		
+		/*
+		long totalPayloadSize = fragment.getBytecount();
+		if(totalPayloadSize > settings.initialWindowSize) {
+			HTTP2_WINDOW_UPDATE_Frame frame = new HTTP2_WINDOW_UPDATE_Frame();
+			frame.streamIdentifier = identifier;
+			frame.windowSizeIncrement = (int) (2 * totalPayloadSize + settings.initialWindowSize);
+			endpoint.send(frame);
+		}
+		*/
+		
 		// recut to match max frame size (with safety margin)
-		fragment = fragment.recut(settings.maxFrameSize-64);
+		fragment = fragment.recut(settings.maxFrameSize - 256);
 		
 		while(fragment!=null) {
 			HTTP2_DATA_Frame frame = new HTTP2_DATA_Frame();

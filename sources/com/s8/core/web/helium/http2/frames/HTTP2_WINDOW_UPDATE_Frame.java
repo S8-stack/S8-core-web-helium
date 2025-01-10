@@ -150,8 +150,10 @@ public class HTTP2_WINDOW_UPDATE_Frame extends HTTP2_Frame {
 
 	@Override
 	public BytesBlock composePayload() {
-		// TODO Auto-generated method stub
-		return null;
+		BytesBlock payload = new BytesBlock(4);
+		int offset = 0;
+		payload.setUInt31(offset, windowSizeIncrement);
+		return payload;
 	}
 
 
