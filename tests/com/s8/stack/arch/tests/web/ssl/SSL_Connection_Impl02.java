@@ -33,7 +33,7 @@ public class SSL_Connection_Impl02 extends SSL_Connection {
 		this.outbound = outbound;
 		outbound.connection = this;
 		
-		SSL_initialize(endpoint.getWebConfiguration());
+		ssl_initialize(endpoint.getWebConfiguration());
 		
 	}
 

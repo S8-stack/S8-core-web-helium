@@ -43,7 +43,12 @@ public abstract class SSL_Outbound extends RxOutbound {
 	public final static int APPLICATION_OUTPUT_STARTING_CAPACITY = 17408;
 
 
-	private SSLEngine engine;
+	
+	/**
+	 * Local copy of the engine. Allocation managed ONLY by the connection (at SSL level)
+	 */
+	SSLEngine engine;
+
 
 
 
@@ -51,10 +56,6 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 * Application buffer is left in WRITE mode.
 	 */
 	private ByteBuffer applicationBuffer;
-
-	private SSL_Inbound inbound;
-
-
 
 
 	boolean SSL_isVerbose = false;
@@ -86,6 +87,11 @@ public abstract class SSL_Outbound extends RxOutbound {
 	@Override
 	public abstract SSL_Connection getConnection();
 
+	/**
+	 * Access the other side of the connection
+	 * @return the inbound of this connection
+	 */
+	public abstract SSL_Inbound getInbound();
 
 
 
@@ -119,21 +125,13 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 * 
 	 * @param connection
 	 */
-	public void SSL_bind(SSL_Connection connection) {
-
-		this.engine = connection.ssl_getEngine();
-		this.inbound = connection.getInbound();
-
-
-		/* <buffers> */
+	public void ssl_initialize(int networkBufferSize, int applicationBufferSize) {
 
 		/* 
 		 * MUST be left in write mode.
 		 */
-
-		initializeNetworkBuffer(engine.getSession().getPacketBufferSize());
-		initializeApplicationBuffer(engine.getSession().getApplicationBufferSize());
-
+		initializeNetworkBuffer(networkBufferSize);
+		initializeApplicationBuffer(applicationBufferSize);
 	}
 
 
@@ -145,13 +143,19 @@ public abstract class SSL_Outbound extends RxOutbound {
 	 * handshaking has been successfully completed, connection is now ready
 	 */
 	public abstract void ssl_onHandshakingCompleted();
-
+	
+	
+	/**
+	 * 
+	 */
+	public abstract void ssl_onReinitializing();
+	
 
 	/**
 	 * 
 	 * @param buffer
 	 */
-	public abstract void SSL_onSending(ByteBuffer buffer);
+	public abstract void ssl_onSending(ByteBuffer buffer);
 
 
 
@@ -183,9 +187,9 @@ public abstract class SSL_Outbound extends RxOutbound {
 		/* avoid dead lock by performaing following up operations outside critical section */
 		if((extOps & SEND) == SEND) { send(); }
 		
-		if((extOps & UNWRAP) == UNWRAP) { inbound.ssl_launchUnwrap(); }
+		if((extOps & UNWRAP) == UNWRAP) { getInbound().ssl_launchUnwrap(); }
 		
-		if((extOps & RECEIVE) == RECEIVE) { inbound.receive(); }
+		if((extOps & RECEIVE) == RECEIVE) { getInbound().receive(); }
 	}
 
 
@@ -196,7 +200,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 
 
 		/* peform the "pumping" operation */
-		SSL_onSending(applicationBuffer);
+		ssl_onSending(applicationBuffer);
 	}
 
 
@@ -316,7 +320,7 @@ public abstract class SSL_Outbound extends RxOutbound {
 					else { return STOP | UNWRAP; } /* in any case, stop here */ 
 
 				case CLOSED: 
-					inbound.ssl_launchUnwrap();
+					getInbound().ssl_launchUnwrap();
 					close(); return STOP; /* stop */
 
 				default: throw new SSLException("Unsupported result status : "+result.getStatus());

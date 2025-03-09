@@ -25,9 +25,9 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 
 	private HPACK_Context HPACK_context;
 
-	private HTTP2_Inbound inbound;
+	private final HTTP2_Inbound inbound;
 
-	private HTTP2_Outbound outbound;
+	private final HTTP2_Outbound outbound;
 
 
 	/**
@@ -49,6 +49,10 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 		super(key, channel);
 		inbound = new HTTP2_Inbound(name, this, configuration);
 		outbound = new HTTP2_Outbound(name, this, configuration);
+		
+		/* cross referencing */
+		inbound.outbound = outbound;
+		outbound.inbound = inbound;
 	}
 
 
@@ -56,12 +60,12 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 	public abstract HTTP2_Endpoint getEndpoint();
 
 	
-	public void HTTP2_initialize(HTTP2_WebConfiguration config) throws IOException {
+	public void http2_initialize(HTTP2_WebConfiguration config) throws IOException {
 
 
 		// initialize rx and SSL
 		// --> bind inbound and outbound
-		SSL_initialize(config);
+		ssl_initialize(config);
 
 		isVerbose = config.isHTTP2Verbose;
 
@@ -83,8 +87,8 @@ public abstract class HTTP2_Connection extends SSL_Connection {
 
 	
 		/* bind HTTP2_level of inbound/outbound */
-		inbound.HTTP2_bind(this);
-		outbound.HTTP2_bind(this);		
+		inbound.http2_initialize();
+		outbound.http2_initialize();		
 		
 		/* Initialize connection by sending SETTINGS Frame */
 		outbound.push(settings.getFrame());

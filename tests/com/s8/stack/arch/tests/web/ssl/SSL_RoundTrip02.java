@@ -37,18 +37,25 @@ public class SSL_RoundTrip02 {
 						new SSL_Inbound_Impl02("server", serverConfig) {
 
 							@Override
-							public void SSL_onReceived(ByteBuffer buffer) {
+							public void ssl_onReceived(ByteBuffer buffer) {
 								int n = buffer.limit();
 								byte[] bytes = new byte[n];
 								buffer.get(bytes);
 								System.out.println("[SSL_outbound (test)] "+new String(bytes));
 							}
+
+							@Override
+							public void ssl_onReinitializing() {
+								System.out.println("[SSL_outbound (test)] RE_INIT requested");
+								
+							}
+
 						},
 						new SSL_Outbound_Impl02("server", serverConfig) {
 							private int count = 0;
 
 							@Override
-							public void SSL_onSending(ByteBuffer buffer) {
+							public void ssl_onSending(ByteBuffer buffer) {
 								if(count<4) {
 									buffer.put("Hi! this is server side!!".getBytes());
 									count++;
@@ -58,6 +65,13 @@ public class SSL_RoundTrip02 {
 							@Override
 							public void ssl_onHandshakingCompleted() {
 							}
+							
+							@Override
+							public void ssl_onReinitializing() {
+								System.out.println("[SSL_outbound (test)] RE_INIT requested");
+								
+							}
+
 						});
 			}
 
@@ -82,18 +96,23 @@ public class SSL_RoundTrip02 {
 						new SSL_Inbound_Impl02("client", clientConfig) {
 
 							@Override
-							public void SSL_onReceived(ByteBuffer buffer) {
+							public void ssl_onReceived(ByteBuffer buffer) {
 								int n = buffer.limit();
 								byte[] bytes = new byte[n];
 								buffer.get(bytes);
 								System.out.println("[SSL_Inbound (test)] "+new String(bytes));
+							}
+
+							@Override
+							public void ssl_onReinitializing() {
+								System.out.println("[SSL_Inbound (test)] RE-INIT requested");	
 							}
 						},
 						new SSL_Outbound_Impl02("client", clientConfig) {
 							private int count = 0;
 
 							@Override
-							public void SSL_onSending(ByteBuffer buffer) {
+							public void ssl_onSending(ByteBuffer buffer) {
 
 								byte[] messageBytes = "Hi this is client!!".getBytes();
 								if(count<4 && buffer.remaining()>messageBytes.length) {
@@ -104,6 +123,13 @@ public class SSL_RoundTrip02 {
 
 							@Override
 							public void ssl_onHandshakingCompleted() {
+								System.out.println("[SSL_Outbound (test)] HANDSHAKE COMPLETED");	
+							}
+							
+
+							@Override
+							public void ssl_onReinitializing() {
+								System.out.println("[SSL_Outbound (test)] RE-INIT requested");		
 							}
 						});
 			}

@@ -8,11 +8,16 @@ import com.s8.core.web.helium.ssl.SSL_Inbound;
 
 public class HTTP2_Inbound extends SSL_Inbound {
 
-	private HTTP2_Connection connection;
+	private final HTTP2_Connection connection;
+	
+	/** direct cache of the othe side of the connection (managed by connection) */
+	HTTP2_Outbound outbound;
+	
 	
 	private HTTP2_IOReactive state;
 	
 	private boolean HTTP2_isVerbose;
+
 
 	
 	public HTTP2_Inbound(String name, HTTP2_Connection connection, HTTP2_WebConfiguration configuration) {
@@ -26,25 +31,32 @@ public class HTTP2_Inbound extends SSL_Inbound {
 		return connection;
 	}
 	
+	@Override
+	public HTTP2_Outbound getOutbound() {
+		return outbound;
+	}
+	
 	
 	/**
 	 * 
 	 * @param connection
 	 */
+	/*
 	public void bind(HTTP2_Connection connection) {
 
 		// Rx
 		rxBind(connection);
 		
 		// SSL
-		SSL_bind(connection);
+		//ssl_bind(connection);
 		
 		// HTTP2
 		HTTP2_bind(connection);
 	}
+	*/
 	
 	
-	protected void HTTP2_bind(HTTP2_Connection connection) {
+	protected void http2_initialize() {
 		if(connection.isServerSide()) {
 			state = new ReceivingPreface(this);
 		}
@@ -55,8 +67,15 @@ public class HTTP2_Inbound extends SSL_Inbound {
 		this.state = state;
 	}
 
+
 	@Override
-	public void SSL_onReceived(ByteBuffer buffer) {
+	public void ssl_onReinitializing() {
+		http2_initialize();
+	}
+
+	
+	@Override
+	public void ssl_onReceived(ByteBuffer buffer) {
 		try {
 			while(state!=null && buffer.hasRemaining()) {
 				HTTP2_Error error = state.on(buffer);

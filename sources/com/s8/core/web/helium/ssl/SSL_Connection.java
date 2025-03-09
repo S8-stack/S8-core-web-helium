@@ -68,7 +68,7 @@ public abstract class SSL_Connection extends RxConnection {
 	 * 
 	 * @throws IOException
 	 */
-	public void SSL_initialize(SSL_WebConfiguration config) throws IOException {
+	public void ssl_initialize(SSL_WebConfiguration config) throws IOException {
 		
 		// rx level
 		Rx_initialize(config);
@@ -84,11 +84,15 @@ public abstract class SSL_Connection extends RxConnection {
 		isClosed = false;
 
 		// engine
-		engine = createEngine();
+		initializeSSLEngine();
 		
 		/* bind bounds */
-		getInbound().SSL_bind(this);
-		getOutbound().SSL_bind(this);
+
+		int networkBufferSize = engine.getSession().getPacketBufferSize();
+		int applicationBufferSize = engine.getSession().getApplicationBufferSize();
+		
+		getInbound().ssl_initialize(networkBufferSize, applicationBufferSize);
+		getOutbound().ssl_initialize(networkBufferSize, applicationBufferSize);
 		
 
 		/* now (and only now) ready for initial handshake */
@@ -136,7 +140,11 @@ public abstract class SSL_Connection extends RxConnection {
 	}
 
 
-	private SSLEngine createEngine() {
+	
+	/**
+	 * 
+	 */
+	void initializeSSLEngine() {
 		/* <init_SSLEngine> */
 
 		SSLContext context = getEndpoint().ssl_getContext();
@@ -146,7 +154,7 @@ public abstract class SSL_Connection extends RxConnection {
 		int maxPacketSize = config.ssl_maxPacketSize;
 		boolean isServerSide = config.isServer;
 		
-		SSLEngine engine = context.createSSLEngine();
+		engine = context.createSSLEngine();
 
 		if(isServerSide) {
 			/*
@@ -178,7 +186,10 @@ public abstract class SSL_Connection extends RxConnection {
 		}
 		
 		engine.setSSLParameters(parameters);
-		return engine;
+		
+		/* copy engine cache on each bound */
+		getInbound().engine = engine;
+		getOutbound().engine = engine;
 	}
 
 

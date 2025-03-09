@@ -20,6 +20,7 @@ import java.security.cert.CertificateException;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSessionContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
@@ -97,6 +98,9 @@ public class SSL_Module {
 
 		SSLContext sslContext = SSLContext.getInstance(configuration.getEncryptionProtocol());
 		sslContext.init(keyManagers, trustManagers, new SecureRandom());
+		
+		SSLSessionContext sessionContext = sslContext.getServerSessionContext();
+		sessionContext.setSessionTimeout(configuration.getTimeout());  // Set timeout to 30 minutes (1800 seconds)
 		
 		
 		return sslContext;

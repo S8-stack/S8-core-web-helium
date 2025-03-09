@@ -27,15 +27,15 @@ public class SSL_WebConfiguration extends RxWebConfiguration {
 
 	private String encryptionProtocol = "TLSv1.2";
 	
-	private long timeout = 10;
+	private long timeout = 1800;
 
 	
 	public String getName() {
 		return name;
 	}
 	
-	public long getTimeout() {
-		return timeout;
+	public int getTimeout() {
+		return (int) timeout;
 	}
 
 	public boolean isSSLVerbose() {
@@ -99,7 +99,7 @@ public class SSL_WebConfiguration extends RxWebConfiguration {
 		this.applicationProtocols = protocols.split("[ ,]*");
 	}
 	
-	@XML_SetElement(tag="timeout")
+	@XML_SetElement(tag="SSL-timeout")
 	public void setTimeout(long timeout) {
 		this.timeout = timeout;
 	}
